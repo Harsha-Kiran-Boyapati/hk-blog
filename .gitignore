@@ -1,0 +1,46 @@
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Environment variables
+.env
+scripts/.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build files (keep source, ignore built files outside public/)
+index.html
+preview.html
+index.md
+
+# Jekyll/Hugo artifacts (since we removed them)
+_site/
+.jekyll-cache/
+.jekyll-metadata
+_config.yml
+Gemfile*
+hugo.toml
+archetypes/
+layouts/
+static/
+themes/
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
