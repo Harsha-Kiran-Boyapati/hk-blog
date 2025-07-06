@@ -3,6 +3,8 @@ import os
 import re
 from pathlib import Path
 
+ROOT_DIR = Path(__file__).parent.parent
+POEM = 'rape-of-lucrece'
 def extract_stanza(content, stanza_number):
     """Extract a specific stanza from the Venus and Adonis content"""
     lines = content.split('\n')
@@ -23,7 +25,7 @@ def extract_stanza(content, stanza_number):
 def create_explanation_file(stanza_number, stanza_text, explanation="[Explanation to be added from Gemini LLM]"):
     """Create explanation file for a stanza"""
     
-    file_path = f"../content/venus-and-adonis/explanation/{stanza_number}.md"
+    file_path = ROOT_DIR / f"content/{POEM}/explanation/{stanza_number}.md"
     
     content = f"""# Stanza {stanza_number} - Explanation
 
@@ -47,7 +49,7 @@ def create_explanation_file(stanza_number, stanza_text, explanation="[Explanatio
 
 def main():
     # Read the Venus and Adonis file
-    with open('../content/venus-and-adonis.md', 'r') as f:
+    with open(ROOT_DIR / f"content/{POEM}/{POEM}.md", 'r') as f:
         content = f.read()
     
     # Test with stanza 1

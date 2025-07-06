@@ -244,11 +244,11 @@ def create_overview_page(stanza_files):
     
     for stanza_num in sorted(stanza_files):
         content += f"""
-        <div class="overview-card">
-            <a href="{stanza_num}.html">
+        <a href="{stanza_num}.html">
+            <div class="overview-card">
                 Stanza {stanza_num}
-            </a>
-        </div>
+            </div>
+        </a>
         """
     
     content += """
@@ -269,7 +269,7 @@ def create_overview_page(stanza_files):
 
 def main():
     explanation_dir = ROOT_DIR / "content" / "venus-and-adonis" / "explanation"
-    html_dir = ROOT_DIR / "content" / "venus-and-adonis" / "html"
+    html_dir = ROOT_DIR / "docs" / "venus-and-adonis"
     
     # Create HTML directory
     html_dir.mkdir(exist_ok=True)
