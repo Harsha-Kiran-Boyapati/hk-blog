@@ -9,20 +9,21 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
+ROOT_DIR = Path(__file__).parent.parent
 def clean_public_dir():
     """Clean and recreate public directory"""
-    public_dir = Path("../docs")
+    public_dir = ROOT_DIR / "docs"
     if public_dir.exists():
         shutil.rmtree(public_dir)
     
     # Create directory structure
     directories = [
-        "public",
-        "public/assets",
-        "public/venus-and-adonis",
-        "public/literature", 
-        "public/tech",
-        "public/about"
+        public_dir,
+        public_dir / "assets",
+        public_dir / "venus-and-adonis",
+        public_dir / "literature",
+        public_dir / "tech",
+        public_dir / "about"
     ]
     
     for dir_path in directories:
@@ -30,36 +31,23 @@ def clean_public_dir():
     
     print("✅ Cleaned and created public directory structure")
 
-def copy_static_assets():
-    """Copy CSS, images, and other static assets"""
-    # Copy CSS
-    if Path("../assets/style.css").exists():
-        shutil.copy("../assets/style.css", "../docs/assets/")
-    
-    # Copy interactive HTML demos
-    if Path("../venus-adonis-interactive.html").exists():
-        shutil.copy("../venus-adonis-interactive.html", "../docs/")
-    
-    print("✅ Copied static assets")
+def create_cname():
+    """Create CNAME file"""
+    with open("../docs/CNAME", "w") as f:
+        f.write("harshakiran.com")
+    print("✅ Created CNAME file")
 
 def copy_venus_adonis_html():
     """Copy Venus and Adonis HTML files"""
-    html_dir = Path("../content/venus-and-adonis/html")
-    if html_dir.exists():
-        # Copy all HTML files from content to public
-        for html_file in html_dir.glob("*.html"):
-            shutil.copy(html_file, "../docs/venus-and-adonis/")
-        print(f"✅ Copied {len(list(html_dir.glob('*.html')))} Venus and Adonis HTML files")
+    src_dir = ROOT_DIR / "content" / "venus-and-adonis" / "html"
+
+    if src_dir.exists():
+        dest_dir = ROOT_DIR / "docs" / "venus-and-adonis"
+        shutil.copytree(src_dir, dest_dir, dirs_exist_ok=True)
+        print(f"✅ Copied  Venus and Adonis HTML files")
     else:
         print("⚠️  Venus and Adonis HTML directory not found")
 
-def copy_main_files():
-    """Copy main HTML files"""
-    # Copy homepage
-    if Path("../index.html").exists():
-        shutil.copy("../index.html", "../docs/")
-    
-    print("✅ Copied main HTML files")
 
 def create_venus_adonis_index():
     """Create Venus and Adonis index page with links to all stanzas"""
@@ -243,14 +231,6 @@ def create_venus_adonis_index():
     
     print(f"✅ Created Venus and Adonis index with {len(stanza_numbers)} stanzas")
 
-def create_github_pages_config():
-    """Create necessary files for GitHub Pages"""
-    
-    # Create .nojekyll file to prevent Jekyll processing
-    with open("../docs/.nojekyll", 'w') as f:
-        f.write("")
-    
-    print("✅ Created GitHub Pages configuration")
 
 def main():
     """Main build process"""
@@ -262,12 +242,9 @@ def main():
     
     # Build steps
     clean_public_dir()
-    copy_static_assets()
     copy_venus_adonis_html()
-    copy_main_files()
-    create_venus_adonis_index()
-    create_github_pages_config()
-    
+    create_cname()
+
     print("=" * 50)
     print("🎉 Site built successfully!")
     print("📂 Files are in the public/ directory")

@@ -4,6 +4,7 @@ import re
 import markdown
 from pathlib import Path
 
+ROOT_DIR = Path(__file__).parent.parent
 def read_markdown_file(file_path):
     """Read and return markdown content from file"""
     try:
@@ -268,8 +269,8 @@ def create_overview_page(stanza_files):
     return create_html_page("Venus and Adonis - Overview", content)
 
 def main():
-    explanation_dir = Path("/Users/hk/hk-blog/content/venus-and-adonis/explanation")
-    html_dir = Path("/Users/hk/hk-blog/content/venus-and-adonis/html")
+    explanation_dir = ROOT_DIR / "content" / "venus-and-adonis" / "explanation"
+    html_dir = ROOT_DIR / "content" / "venus-and-adonis" / "html"
     
     # Create HTML directory
     html_dir.mkdir(exist_ok=True)
