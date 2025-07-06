@@ -246,8 +246,7 @@ def create_overview_page(stanza_files):
         content += f"""
         <div class="overview-card">
             <a href="{stanza_num}.html">
-                <h3>Stanza {stanza_num}</h3>
-                <p>Literary Analysis</p>
+                Stanza {stanza_num}
             </a>
         </div>
         """
