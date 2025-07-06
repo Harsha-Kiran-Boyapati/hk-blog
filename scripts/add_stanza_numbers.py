@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).parent.parent
 def add_stanza_numbers(input_file, output_file):
-    """Add stanza numbers to Shakespeare's Venus and Adonis poem respecting existing stanza breaks"""
+    """Add stanza numbers to poem respecting existing stanza breaks"""
     
     with open(input_file, 'r') as f:
         content = f.read()
@@ -30,5 +33,5 @@ def add_stanza_numbers(input_file, output_file):
     print(f"Output written to: {output_file}")
 
 if __name__ == "__main__":
-    add_stanza_numbers('../content/venus-and-adonis.md', 
-                      '../content/venus-and-adonis-numbered.md')
+    add_stanza_numbers(ROOT_DIR / 'content' / 'rape-of-lucrece' / 'rape-of-lucrece.md',
+                      ROOT_DIR / 'content' / 'rape-of-lucrece' / 'rape-of-lucrece-numbered.md')

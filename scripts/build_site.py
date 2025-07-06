@@ -11,7 +11,7 @@ from datetime import datetime
 
 def clean_public_dir():
     """Clean and recreate public directory"""
-    public_dir = Path("../public")
+    public_dir = Path("../docs")
     if public_dir.exists():
         shutil.rmtree(public_dir)
     
@@ -34,11 +34,11 @@ def copy_static_assets():
     """Copy CSS, images, and other static assets"""
     # Copy CSS
     if Path("../assets/style.css").exists():
-        shutil.copy("../assets/style.css", "../public/assets/")
+        shutil.copy("../assets/style.css", "../docs/assets/")
     
     # Copy interactive HTML demos
     if Path("../venus-adonis-interactive.html").exists():
-        shutil.copy("../venus-adonis-interactive.html", "../public/")
+        shutil.copy("../venus-adonis-interactive.html", "../docs/")
     
     print("✅ Copied static assets")
 
@@ -48,7 +48,7 @@ def copy_venus_adonis_html():
     if html_dir.exists():
         # Copy all HTML files from content to public
         for html_file in html_dir.glob("*.html"):
-            shutil.copy(html_file, "../public/venus-and-adonis/")
+            shutil.copy(html_file, "../docs/venus-and-adonis/")
         print(f"✅ Copied {len(list(html_dir.glob('*.html')))} Venus and Adonis HTML files")
     else:
         print("⚠️  Venus and Adonis HTML directory not found")
@@ -57,7 +57,7 @@ def copy_main_files():
     """Copy main HTML files"""
     # Copy homepage
     if Path("../index.html").exists():
-        shutil.copy("../index.html", "../public/")
+        shutil.copy("../index.html", "../docs/")
     
     print("✅ Copied main HTML files")
 
@@ -65,7 +65,7 @@ def create_venus_adonis_index():
     """Create Venus and Adonis index page with links to all stanzas"""
     
     # Check if we have HTML files
-    html_files = list(Path("../public/venus-and-adonis").glob("[0-9]*.html"))
+    html_files = list(Path("../docs/venus-and-adonis").glob("[0-9]*.html"))
     stanza_numbers = sorted([int(f.stem) for f in html_files if f.stem.isdigit()])
     
     # Create stanza grid HTML
@@ -238,7 +238,7 @@ def create_venus_adonis_index():
 </body>
 </html>"""
     
-    with open("../public/venus-and-adonis/index.html", 'w') as f:
+    with open("../docs/venus-and-adonis/index.html", 'w') as f:
         f.write(html)
     
     print(f"✅ Created Venus and Adonis index with {len(stanza_numbers)} stanzas")
@@ -247,7 +247,7 @@ def create_github_pages_config():
     """Create necessary files for GitHub Pages"""
     
     # Create .nojekyll file to prevent Jekyll processing
-    with open("../public/.nojekyll", 'w') as f:
+    with open("../docs/.nojekyll", 'w') as f:
         f.write("")
     
     print("✅ Created GitHub Pages configuration")
@@ -275,7 +275,7 @@ def main():
     
     # Show structure
     print("\n📁 Public directory structure:")
-    for root, dirs, files in os.walk("../public"):
+    for root, dirs, files in os.walk("../docs"):
         level = root.replace("../public", "").count(os.sep)
         indent = " " * 2 * level
         print(f"{indent}{os.path.basename(root)}/")
