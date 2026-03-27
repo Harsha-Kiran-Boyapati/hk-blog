@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pitch Visualizer</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #111;
+      color: #eee;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 16px 16px 0;
+    }
+
+    #controls {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 16px 0;
+      border-bottom: 1px solid #222;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .control-group label {
+      font-size: 0.75rem;
+      color: #888;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .control-group select {
+      background: #1a1a1a;
+      color: #eee;
+      border: 1px solid #333;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .control-group select:hover { border-color: #555; }
+    .control-group select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #toggle-btn {
+      background: #1565c0;
+      border: none;
+      color: #fff;
+      padding: 9px 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      flex-shrink: 0;
+      align-self: flex-end;
+    }
+
+    #toggle-btn:hover { background: #1976d2; }
+
+    #canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+    }
+
+    #pitch-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="controls">
+      <div class="control-group">
+        <label for="raga-select">Raga</label>
+        <select id="raga-select">
+          <option value="mayamalavagowla">Mayamalavagowla</option>
+          <option value="shankarabharanam">Shankarabharanam</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="sa-select">Sa</label>
+        <select id="sa-select">
+          <option value="C3">C3 — 130.81 Hz</option>
+          <option value="C#3">C#3 — 138.59 Hz</option>
+          <option value="D3">D3 — 146.83 Hz</option>
+          <option value="B3">B3 — 246.94 Hz</option>
+        </select>
+      </div>
+      <button id="toggle-btn">Start</button>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="pitch-canvas"></canvas>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const SWARA_NAMES = [
+      'Sa', 'Ri\u2081', 'Ri\u2082', 'Ga\u2082', 'Ga\u2083',
+      'Ma\u2081', 'Ma\u2082', 'Pa', 'Dha\u2081', 'Dha\u2082',
+      'Ni\u2082', 'Ni\u2083',
+    ];
+
+    const RAGAS = {
+      mayamalavagowla: {
+        name: 'Mayamalavagowla',
+        semitones: [0, 1, 4, 5, 7, 8, 11],
+      },
+      shankarabharanam: {
+        name: 'Shankarabharanam',
+        semitones: [0, 2, 4, 5, 7, 9, 11],
+      },
+    };
+
+    const SA_FREQUENCIES = {
+      'C3':  130.81,
+      'C#3': 138.59,
+      'D3':  146.83,
+      'B3':  246.94,
+    };
+
+    const LIVE_WINDOW_SECS = 10;
+
+    const state = {
+      isLive: false,
+      audioCtx: null,
+      processor: null,
+      stream: null,
+      pitchPoints: [],
+      currentSwara: -1,
+      startTime: 0,
+      animFrame: null,
+      raga: null,
+      saFreq: null,
+    };
+
+    const toggleBtn  = document.getElementById('toggle-btn');
+    const ragaSelect = document.getElementById('raga-select');
+    const saSelect   = document.getElementById('sa-select');
+    const canvas     = document.getElementById('pitch-canvas');
+
+    function yinDetect(buffer, sampleRate) {
+      var THRESHOLD = 0.15;
+      var halfSize  = Math.floor(buffer.length / 2);
+      var minTau    = Math.floor(sampleRate / 1000);
+      var maxTau    = Math.min(Math.floor(sampleRate / 80), halfSize);
+
+      var diff = new Float32Array(halfSize);
+      for (var tau = 0; tau < halfSize; tau++) {
+        var sum = 0;
+        for (var i = 0; i < halfSize; i++) {
+          var d = buffer[i] - buffer[i + tau];
+          sum += d * d;
+        }
+        diff[tau] = sum;
+      }
+
+      diff[0] = 1;
+      var runningSum = 0;
+      for (var tau = 1; tau < halfSize; tau++) {
+        runningSum += diff[tau];
+        diff[tau] = runningSum === 0 ? 1 : (diff[tau] * tau) / runningSum;
+      }
+
+      var tau = minTau;
+      while (tau < maxTau) {
+        if (diff[tau] < THRESHOLD) {
+          while (tau + 1 < maxTau && diff[tau + 1] < diff[tau]) tau++;
+          break;
+        }
+        tau++;
+      }
+
+      if (tau >= maxTau) return { frequency: 0, confidence: 0 };
+
+      var betterTau = tau;
+      if (tau > 0 && tau < halfSize - 1) {
+        var s0 = diff[tau - 1], s1 = diff[tau], s2 = diff[tau + 1];
+        var denom = 2 * (s0 - 2 * s1 + s2);
+        if (denom !== 0) betterTau = tau + (s0 - s2) / denom;
+      }
+
+      return { frequency: sampleRate / betterTau, confidence: 1 - diff[tau] };
+    }
+
+    function freqToSemitone(freq, saFreq) {
+      return 12 * Math.log2(freq / saFreq);
+    }
+
+    function semitoneToSwaraIndex(semitone) {
+      var idx = Math.round(semitone) % 12;
+      if (idx < 0) idx += 12;
+      return idx;
+    }
+
+    function getRagaRange(raga) {
+      var niSemi = raga.semitones[raga.semitones.length - 1];
+      var riSemi = raga.semitones[1];
+      return { minSemi: niSemi - 12, maxSemi: riSemi + 12 };
+    }
+
+    async function startLive() {
+      var stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        alert('Microphone access denied.');
+        return;
+      }
+
+      state.raga   = RAGAS[ragaSelect.value];
+      state.saFreq = SA_FREQUENCIES[saSelect.value];
+      state.pitchPoints  = [];
+      state.currentSwara = -1;
+      state.startTime    = Date.now();
+      state.stream       = stream;
+
+      var actx = new (window.AudioContext || window.webkitAudioContext)();
+      state.audioCtx = actx;
+
+      var source    = actx.createMediaStreamSource(stream);
+      var processor = actx.createScriptProcessor(2048, 1, 1);
+      state.processor = processor;
+
+      processor.onaudioprocess = function (e) {
+        var input = e.inputBuffer.getChannelData(0);
+        var frame = new Float32Array(2048);
+        for (var i = 0; i < 2048; i++) {
+          frame[i] = input[i] * 0.5 * (1 - Math.cos((2 * Math.PI * i) / 2047));
+        }
+
+        var result  = yinDetect(frame, actx.sampleRate);
+        var elapsed = (Date.now() - state.startTime) / 1000;
+
+        if (result.frequency > 0 && result.confidence > 0.6) {
+          state.pitchPoints.push({ time: elapsed, frequency: result.frequency, confidence: result.confidence });
+          state.currentSwara = semitoneToSwaraIndex(freqToSemitone(result.frequency, state.saFreq));
+        } else {
+          state.currentSwara = -1;
+        }
+
+        var cutoff = elapsed - LIVE_WINDOW_SECS;
+        while (state.pitchPoints.length > 0 && state.pitchPoints[0].time < cutoff) {
+          state.pitchPoints.shift();
+        }
+      };
+
+      source.connect(processor);
+      processor.connect(actx.destination);
+
+      state.isLive = true;
+      toggleBtn.textContent = 'Stop';
+      ragaSelect.disabled   = true;
+      saSelect.disabled     = true;
+
+      function animate() {
+        renderCanvas();
+        state.animFrame = requestAnimationFrame(animate);
+      }
+      state.animFrame = requestAnimationFrame(animate);
+    }
+
+    function stopLive() {
+      if (state.animFrame)  { cancelAnimationFrame(state.animFrame); state.animFrame = null; }
+      if (state.processor)  { state.processor.disconnect(); state.processor = null; }
+      if (state.audioCtx)   { state.audioCtx.close(); state.audioCtx = null; }
+      if (state.stream)     { state.stream.getTracks().forEach(t => t.stop()); state.stream = null; }
+
+      state.isLive = false;
+      state.pitchPoints  = [];
+      state.currentSwara = -1;
+      toggleBtn.textContent = 'Start';
+      ragaSelect.disabled   = false;
+      saSelect.disabled     = false;
+
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0c0c0c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function formatDuration(s) {
+      var m = Math.floor(s / 60);
+      return m + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+    }
+
+    function renderCanvas() {
+      var raga   = state.raga;
+      var saFreq = state.saFreq;
+      if (!raga || !saFreq) return;
+
+      var dpr   = window.devicePixelRatio || 1;
+      var rect  = canvas.parentElement.getBoundingClientRect();
+      var width = rect.width, height = rect.height;
+
+      canvas.width        = width * dpr;
+      canvas.height       = height * dpr;
+      canvas.style.width  = width + 'px';
+      canvas.style.height = height + 'px';
+
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      var pL = 52, pR = 16, pT = 16, pB = 28;
+      var plotW = width - pL - pR;
+      var plotH = height - pT - pB;
+
+      ctx.fillStyle = '#0c0c0c';
+      ctx.fillRect(0, 0, width, height);
+
+      var range     = getRagaRange(raga);
+      var minSemi   = range.minSemi;
+      var maxSemi   = range.maxSemi;
+      var semiRange = maxSemi - minSemi;
+
+      var elapsed        = (Date.now() - state.startTime) / 1000;
+      var windowEnd      = elapsed;
+      var windowStart    = Math.max(0, windowEnd - LIVE_WINDOW_SECS);
+      var windowDuration = Math.max(windowEnd - windowStart, 1);
+
+      for (var semi = minSemi; semi <= maxSemi; semi++) {
+        var pos = ((semi % 12) + 12) % 12;
+        if (raga.semitones.indexOf(pos) === -1) continue;
+
+        var y = pT + plotH - ((semi - minSemi) / semiRange) * plotH;
+
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pL, y);
+        ctx.lineTo(width - pR, y);
+        ctx.stroke();
+
+        var octave = Math.floor(semi / 12);
+        var label  = SWARA_NAMES[pos] +
+          (octave > 0 ? "'".repeat(octave) : octave < 0 ? '.'.repeat(-octave) : '');
+        ctx.fillStyle    = '#999';
+        ctx.font         = '10px monospace';
+        ctx.textAlign    = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, pL - 6, y);
+      }
+
+      var timeStep  = windowDuration <= 5 ? 1 : 2;
+      var firstMark = Math.ceil(windowStart / timeStep) * timeStep;
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'top';
+
+      for (var t = firstMark; t <= windowEnd; t += timeStep) {
+        var x = pL + ((t - windowStart) / windowDuration) * plotW;
+        ctx.strokeStyle = '#161616';
+        ctx.lineWidth   = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, pT);
+        ctx.lineTo(x, pT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = '#444';
+        ctx.fillText(formatDuration(t), x, height - pB + 8);
+      }
+
+      for (var p = 0; p < state.pitchPoints.length; p++) {
+        var point    = state.pitchPoints[p];
+        var semitone = freqToSemitone(point.frequency, saFreq);
+
+        if (semitone < minSemi || semitone > maxSemi) continue;
+        if (point.time < windowStart || point.time > windowEnd) continue;
+
+        var swaraIdx = semitoneToSwaraIndex(semitone);
+        var inRaga   = raga.semitones.indexOf(swaraIdx) !== -1;
+
+        var px = pL + ((point.time - windowStart) / windowDuration) * plotW;
+        var py = pT + plotH - ((semitone - minSemi) / semiRange) * plotH;
+
+        var alpha = 0.4 + point.confidence * 0.6;
+        ctx.fillStyle = inRaga
+          ? 'rgba(76, 175, 80, ' + alpha + ')'
+          : 'rgba(244, 67, 54, ' + alpha + ')';
+
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.textAlign    = 'right';
+      ctx.textBaseline = 'top';
+      if (state.currentSwara >= 0) {
+        ctx.fillStyle = '#fff';
+        ctx.font      = 'bold 14px monospace';
+        ctx.fillText(SWARA_NAMES[state.currentSwara], width - pR, pT + 6);
+      } else {
+        ctx.fillStyle = '#555';
+        ctx.font      = 'bold 14px monospace';
+        ctx.fillText('\u2014', width - pR, pT + 6);
+      }
+
+      ctx.fillStyle = '#555';
+      ctx.font      = '10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(raga.name + '  |  Sa = ' + saSelect.value, pL + 8, pT + 6);
+
+      var lX = pL + 8, lY = pT + plotH - 10;
+      ctx.font         = '10px sans-serif';
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillStyle = '#4caf50';
+      ctx.beginPath(); ctx.arc(lX, lY, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#666';
+      ctx.fillText('In-raga', lX + 10, lY);
+
+      ctx.fillStyle = '#f44336';
+      ctx.beginPath(); ctx.arc(lX + 70, lY, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#666';
+      ctx.fillText('Out-of-raga', lX + 80, lY);
+    }
+
+    toggleBtn.addEventListener('click', function () {
+      if (state.isLive) stopLive(); else startLive();
+    });
+
+    window.addEventListener('resize', function () {
+      if (state.isLive) renderCanvas();
+    });
+  })();
+  </script>
+</body>
+</html>
