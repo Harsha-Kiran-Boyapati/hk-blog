@@ -252,26 +252,6 @@
       // Threshold 2.0× is lenient enough to catch the true fundamental even when
       // its CMNDF dip is slightly weaker than the harmonic's (which is why YIN
       // picked the harmonic in the first place).
-      var candidate = Math.round(betterTau);
-      for (var iter = 0; iter < 3; iter++) {
-        var doubled = Math.round(candidate * 2);
-        if (doubled >= maxTau) break;
-        if (diff[doubled] < THRESHOLD * 2.0) {
-          candidate = doubled;
-        } else {
-          break;
-        }
-      }
-      if (candidate !== Math.round(betterTau)) {
-        var st = candidate;
-        if (st > 0 && st < halfSize - 1) {
-          var ss0 = diff[st - 1], ss1 = diff[st], ss2 = diff[st + 1];
-          var sd = 2 * (ss0 - 2 * ss1 + ss2);
-          if (sd !== 0) st = st + (ss0 - ss2) / sd;
-        }
-        betterTau = st;
-      }
-
       return { frequency: sampleRate / betterTau, confidence: 1 - diff[tau] };
     }
 
@@ -311,17 +291,14 @@
       state.audioCtx = actx;
 
       var source    = actx.createMediaStreamSource(stream);
-      var processor = actx.createScriptProcessor(2048, 1, 1);
+      var processor = actx.createScriptProcessor(4096, 1, 1);
       state.processor = processor;
 
       processor.onaudioprocess = function (e) {
         var input = e.inputBuffer.getChannelData(0);
-        var frame = new Float32Array(2048);
-        for (var i = 0; i < 2048; i++) {
-          frame[i] = input[i] * 0.5 * (1 - Math.cos((2 * Math.PI * i) / 2047));
-        }
-
-        var result  = yinDetect(frame, actx.sampleRate);
+        // No windowing — Hann window distorts YIN's CMNDF at large tau values,
+        // biasing the algorithm toward smaller tau (octave-up errors).
+        var result  = yinDetect(input, actx.sampleRate);
         var elapsed = (Date.now() - state.startTime) / 1000;
 
         if (result.frequency > 0 && result.confidence > 0.6) {

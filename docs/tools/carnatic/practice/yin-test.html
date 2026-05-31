@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YIN Pitch Detection Test</title>
+  <style>
+    body { background: #111; color: #eee; font-family: monospace; padding: 24px; }
+    h2 { color: #aaa; margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; max-width: 700px; }
+    th { text-align: left; padding: 6px 12px; color: #888; font-size: 0.8rem; border-bottom: 1px solid #333; }
+    td { padding: 6px 12px; font-size: 0.9rem; border-bottom: 1px solid #1a1a1a; }
+    .pass { color: #4caf50; }
+    .fail { color: #f44336; }
+    .warn { color: #ff9800; }
+    #log { margin-top: 24px; color: #666; font-size: 0.75rem; white-space: pre; }
+    button { background: #1565c0; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h2>YIN Pitch Detection — Harmonium Synthesis Test</h2>
+  <p style="color:#666;margin-bottom:16px;font-size:0.85rem;">
+    Synthesizes each svara using the same harmonium additive model, runs it through the YIN detector, and reports detected vs expected.
+  </p>
+  <button id="run-btn">Run Test</button>
+  <table id="results">
+    <thead>
+      <tr><th>Svara</th><th>Expected Hz</th><th>Expected semi</th><th>Detected Hz</th><th>Detected semi</th><th>Error (cents)</th><th>Status</th></tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div id="log"></div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // ---- YIN (identical to practice page) ----
+    function yinDetect(buffer, sampleRate) {
+      var THRESHOLD = 0.15;
+      var halfSize  = Math.floor(buffer.length / 2);
+      var minTau    = Math.floor(sampleRate / 1000);
+      var maxTau    = Math.min(Math.floor(sampleRate / 80), halfSize);
+
+      var diff = new Float32Array(halfSize);
+      for (var tau = 0; tau < halfSize; tau++) {
+        var sum = 0;
+        for (var i = 0; i < halfSize; i++) {
+          var d = buffer[i] - buffer[i + tau];
+          sum += d * d;
+        }
+        diff[tau] = sum;
+      }
+
+      diff[0] = 1;
+      var runningSum = 0;
+      for (var tau = 1; tau < halfSize; tau++) {
+        runningSum += diff[tau];
+        diff[tau] = runningSum === 0 ? 1 : (diff[tau] * tau) / runningSum;
+      }
+
+      var tau = minTau;
+      while (tau < maxTau) {
+        if (diff[tau] < THRESHOLD) {
+          while (tau + 1 < maxTau && diff[tau + 1] < diff[tau]) tau++;
+          break;
+        }
+        tau++;
+      }
+
+      if (tau >= maxTau) return { frequency: 0, confidence: 0 };
+
+      var betterTau = tau;
+      if (tau > 0 && tau < halfSize - 1) {
+        var s0 = diff[tau - 1], s1 = diff[tau], s2 = diff[tau + 1];
+        var denom = 2 * (s0 - 2 * s1 + s2);
+        if (denom !== 0) betterTau = tau + (s0 - s2) / denom;
+      }
+
+      return { frequency: sampleRate / betterTau, confidence: 1 - diff[tau] };
+    }
+
+    // ---- Harmonium synthesis (same model as keyboard/practice pages) ----
+    const HARMONICS = [
+      { amp: 1.0,  mult: 1.0   },
+      { amp: 0.55, mult: 2.0   },
+      { amp: 0.40, mult: 3.0   },
+      { amp: 0.25, mult: 4.0   },
+      { amp: 0.18, mult: 5.0   },
+      { amp: 0.12, mult: 6.0   },
+      { amp: 0.30, mult: 1.003 },
+      { amp: 0.20, mult: 2.006 },
+    ];
+
+    function synthesizeNote(hz, sampleRate, durationSamples) {
+      var buf = new Float32Array(durationSamples);
+      var totalAmp = HARMONICS.reduce(function (s, h) { return s + h.amp; }, 0);
+      HARMONICS.forEach(function (h) {
+        var freq = hz * h.mult;
+        var amp  = h.amp / totalAmp;
+        for (var i = 0; i < durationSamples; i++) {
+          buf[i] += amp * Math.sin(2 * Math.PI * freq * i / sampleRate);
+        }
+      });
+      return buf;
+    }
+
+    // ---- Test cases ----
+    const SAMPLE_RATE = 44100;
+    const BUFFER_SIZE = 4096; // must match practice page
+
+    // Sa = C3 = 130.81 Hz, Mayamalavagowla semitones [0,1,4,5,7,8,11]
+    const SA_FREQ = 130.81;
+    const RAGAS = {
+      mayamalavagowla: { name: 'Mayamalavagowla', semitones: [0, 1, 4, 5, 7, 8, 11] },
+      shankarabharanam: { name: 'Shankarabharanam', semitones: [0, 2, 4, 5, 7, 9, 11] },
+    };
+    const SVARA_NAMES = ['Sa', 'Ri', 'Ga', 'Ma', 'Pa', 'Da', 'Ni'];
+
+    function runTests() {
+      var tbody = document.getElementById('tbody');
+      var log   = document.getElementById('log');
+      tbody.innerHTML = '';
+      log.textContent = '';
+
+      var raga = RAGAS.mayamalavagowla;
+      var notes = [];
+
+      // 3 octaves: mandra (-12), madhya (0), tara (+12)
+      [-12, 0, 12].forEach(function (octaveOffset) {
+        raga.semitones.forEach(function (semi, i) {
+          notes.push({
+            label: SVARA_NAMES[i] + (octaveOffset === 0 ? '' : octaveOffset < 0 ? '₋' : '₊'),
+            semis: semi + octaveOffset,
+            hz: SA_FREQ * Math.pow(2, (semi + octaveOffset) / 12),
+          });
+        });
+        // Upper Sa of each octave
+        notes.push({
+          label: 'Sa' + (octaveOffset === 0 ? '₊' : octaveOffset < 0 ? '' : '₊₊'),
+          semis: 12 + octaveOffset,
+          hz: SA_FREQ * Math.pow(2, (12 + octaveOffset) / 12),
+        });
+      });
+
+      var passCount = 0, failCount = 0, warnCount = 0;
+
+      notes.forEach(function (note) {
+        // Skip very low or very high notes outside expected range
+        if (note.hz < 70 || note.hz > 1200) return;
+
+        var signal  = synthesizeNote(note.hz, SAMPLE_RATE, BUFFER_SIZE + 100);
+        // Take middle BUFFER_SIZE samples (avoid transient start)
+        var frame   = signal.subarray(50, 50 + BUFFER_SIZE);
+        var result  = yinDetect(frame, SAMPLE_RATE);
+
+        var detectedSemis = result.frequency > 0
+          ? 12 * Math.log2(result.frequency / SA_FREQ)
+          : null;
+        var centsError = detectedSemis !== null
+          ? (detectedSemis - note.semis) * 100
+          : null;
+
+        var status, cls;
+        if (result.frequency === 0) {
+          status = 'NO DETECT'; cls = 'fail'; failCount++;
+        } else if (Math.abs(centsError) < 25) {
+          status = 'PASS'; cls = 'pass'; passCount++;
+        } else if (Math.abs(centsError) < 60) {
+          status = 'WARN'; cls = 'warn'; warnCount++;
+        } else {
+          status = 'FAIL (off by ' + Math.round(centsError / 100) + ' oct)'; cls = 'fail'; failCount++;
+        }
+
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + note.label + '</td>' +
+          '<td>' + note.hz.toFixed(2) + '</td>' +
+          '<td>' + (note.semis >= 0 ? '+' : '') + note.semis + '</td>' +
+          '<td>' + (result.frequency > 0 ? result.frequency.toFixed(2) : '—') + '</td>' +
+          '<td>' + (detectedSemis !== null ? (detectedSemis >= 0 ? '+' : '') + detectedSemis.toFixed(2) : '—') + '</td>' +
+          '<td>' + (centsError !== null ? (centsError >= 0 ? '+' : '') + Math.round(centsError) + '¢' : '—') + '</td>' +
+          '<td class="' + cls + '">' + status + '</td>';
+        tbody.appendChild(tr);
+
+        log.textContent += note.label.padEnd(8) +
+          ' hz=' + note.hz.toFixed(1).padStart(7) +
+          ' tau=' + (SAMPLE_RATE / note.hz).toFixed(1).padStart(7) +
+          ' conf=' + result.confidence.toFixed(3) +
+          ' detected=' + (result.frequency > 0 ? result.frequency.toFixed(1) : 'none') + '\n';
+      });
+
+      log.textContent = 'Results: ' + passCount + ' pass, ' + warnCount + ' warn, ' + failCount + ' fail\n\n' + log.textContent;
+    }
+
+    document.getElementById('run-btn').addEventListener('click', runTests);
+  })();
+  </script>
+</body>
+</html>
