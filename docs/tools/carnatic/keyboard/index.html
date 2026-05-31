@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Svara Keyboard</title>
+  <title>Harmonium</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
@@ -282,7 +282,7 @@
         keysEl.appendChild(rowEl);
       });
 
-      taglineEl.textContent = RAGAS[ragaSelect.value].name + '  ·  Sa = ' + saSelect.value + '  ·  harmonium tone';
+      taglineEl.textContent = RAGAS[ragaSelect.value].name + '  ·  Sa = ' + saSelect.value;
     }
 
     window.addEventListener('keydown', function (e) {
