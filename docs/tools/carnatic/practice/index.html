@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practice</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #111;
+      color: #eee;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 16px 24px 0;
+    }
+
+    #controls {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 56px;
+      padding: 14px 0;
+      flex-shrink: 0;
+      border-bottom: 1px solid #1c1c1c;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+    #controls::-webkit-scrollbar { display: none; }
+
+    .grp { display: flex; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .cluster { display: flex; align-items: flex-end; gap: 14px; flex-shrink: 0; }
+    .field { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+    .field-row { display: flex; align-items: center; gap: 6px; }
+    .vdiv { width: 1px; align-self: stretch; background: #1c1c1c; margin: 2px 2px; flex-shrink: 0; }
+    .lbl {
+      font-size: 0.66rem; color: #6a6a6a; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+    }
+
+    select {
+      background: #181818; color: #e6e6e6; border: 1px solid #2a2a2a;
+      padding: 7px 9px; border-radius: 6px; font-size: 0.82rem; cursor: pointer;
+    }
+    select:hover { border-color: #444; }
+
+    button.btn {
+      background: #181818; color: #cfcfcf; border: 1px solid #2a2a2a;
+      padding: 7px 14px; border-radius: 6px; cursor: pointer;
+      font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+    }
+    button.btn:hover { border-color: #444; }
+    button.btn.accent { background: #1565c0; border-color: #1565c0; color: #fff; }
+    button.btn.accent:hover { background: #1976d2; }
+    button.btn.on { background: #1565c0; border-color: #1565c0; color: #fff; }
+
+    #bpm-input {
+      width: 46px; background: #181818; color: #e6e6e6; border: 1px solid #2a2a2a;
+      padding: 7px 6px; border-radius: 6px; font-size: 0.82rem; text-align: center;
+    }
+
+    .mini-keys { display: flex; gap: 4px; align-items: center; }
+    .mini-gap { width: 12px; }
+    .mini-key {
+      min-width: 34px; height: 36px; border-radius: 6px;
+      background: #181818; border: 1px solid #262626; color: #cfcfcf;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1px; line-height: 1;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer; user-select: none;
+      transition: background 0.06s, border-color 0.06s;
+    }
+    .mini-key .mk-key { font-size: 0.56rem; color: #5c5c5c; font-weight: 600; }
+    .mini-key:hover { background: #202020; }
+    .mini-key.active { background: #1565c0; border-color: #1565c0; color: #fff; }
+    .mini-key.active .mk-key { color: rgba(255,255,255,0.7); }
+
+    #canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+    }
+
+    #pitch-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="controls">
+      <div class="cluster">
+        <div class="field">
+          <span class="lbl">Raga</span>
+          <select id="raga-select">
+            <option value="mayamalavagowla">Mayamalavagowla</option>
+            <option value="shankarabharanam">Shankarabharanam</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="lbl">Sa</span>
+          <select id="sa-select">
+            <option value="D3">D3</option>
+            <option value="C#3">C#3</option>
+            <option value="C3" selected>C3</option>
+            <option value="B2">B2</option>
+          </select>
+        </div>
+        <div class="vdiv"></div>
+        <div class="field">
+          <span class="lbl">Keys</span>
+          <div class="mini-keys" id="mini-keys"></div>
+        </div>
+      </div>
+
+      <div class="cluster">
+        <div class="field">
+          <span class="lbl">Visualizer</span>
+          <button id="toggle-btn" class="btn accent">Start</button>
+        </div>
+        <div class="vdiv"></div>
+        <div class="field">
+          <span class="lbl">Beats</span>
+          <div class="field-row">
+            <input id="bpm-input" type="number" min="20" max="240" step="1" value="45">
+            <button id="beat-btn" class="btn">Start</button>
+          </div>
+        </div>
+        <div class="vdiv"></div>
+        <div class="field">
+          <span class="lbl">Tanpura</span>
+          <button id="tanpura-btn" class="btn">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="pitch-canvas"></canvas>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const SWARA_NAMES = [
+      'Sa', 'Ri\u2081', 'Ri\u2082', 'Ga\u2082', 'Ga\u2083',
+      'Ma\u2081', 'Ma\u2082', 'Pa', 'Dha\u2081', 'Dha\u2082',
+      'Ni\u2082', 'Ni\u2083',
+    ];
+
+    const RAGAS = {
+      mayamalavagowla: {
+        name: 'Mayamalavagowla',
+        semitones: [0, 1, 4, 5, 7, 8, 11],
+      },
+      shankarabharanam: {
+        name: 'Shankarabharanam',
+        semitones: [0, 2, 4, 5, 7, 9, 11],
+      },
+    };
+
+    const SA_FREQUENCIES = {
+      'C3':  130.81,
+      'C#3': 138.59,
+      'D3':  146.83,
+      'B2':  123.47,
+    };
+
+    const LIVE_WINDOW_SECS = 10;
+
+    const state = {
+      isLive: false,
+      audioCtx: null,
+      processor: null,
+      stream: null,
+      pitchPoints: [],
+      currentSwara: -1,
+      startTime: 0,
+      animFrame: null,
+      raga: null,
+      saFreq: null,
+    };
+
+    const toggleBtn  = document.getElementById('toggle-btn');
+    const ragaSelect = document.getElementById('raga-select');
+    const saSelect   = document.getElementById('sa-select');
+    const canvas     = document.getElementById('pitch-canvas');
+
+    function yinDetect(buffer, sampleRate) {
+      var THRESHOLD = 0.15;
+      var halfSize  = Math.floor(buffer.length / 2);
+      var minTau    = Math.floor(sampleRate / 1000);
+      var maxTau    = Math.min(Math.floor(sampleRate / 80), halfSize);
+
+      var diff = new Float32Array(halfSize);
+      for (var tau = 0; tau < halfSize; tau++) {
+        var sum = 0;
+        for (var i = 0; i < halfSize; i++) {
+          var d = buffer[i] - buffer[i + tau];
+          sum += d * d;
+        }
+        diff[tau] = sum;
+      }
+
+      diff[0] = 1;
+      var runningSum = 0;
+      for (var tau = 1; tau < halfSize; tau++) {
+        runningSum += diff[tau];
+        diff[tau] = runningSum === 0 ? 1 : (diff[tau] * tau) / runningSum;
+      }
+
+      var tau = minTau;
+      while (tau < maxTau) {
+        if (diff[tau] < THRESHOLD) {
+          while (tau + 1 < maxTau && diff[tau + 1] < diff[tau]) tau++;
+          break;
+        }
+        tau++;
+      }
+
+      if (tau >= maxTau) return { frequency: 0, confidence: 0 };
+
+      var betterTau = tau;
+      if (tau > 0 && tau < halfSize - 1) {
+        var s0 = diff[tau - 1], s1 = diff[tau], s2 = diff[tau + 1];
+        var denom = 2 * (s0 - 2 * s1 + s2);
+        if (denom !== 0) betterTau = tau + (s0 - s2) / denom;
+      }
+
+      // Octave-error correction: YIN tends to lock onto a harmonic (octave up).
+      // Iteratively check if 2× the current tau is also a valid dip — keep going
+      // down in frequency until no more valid lower-octave dips are found.
+      // Threshold 2.0× is lenient enough to catch the true fundamental even when
+      // its CMNDF dip is slightly weaker than the harmonic's (which is why YIN
+      // picked the harmonic in the first place).
+      var candidate = Math.round(betterTau);
+      for (var iter = 0; iter < 3; iter++) {
+        var doubled = Math.round(candidate * 2);
+        if (doubled >= maxTau) break;
+        if (diff[doubled] < THRESHOLD * 2.0) {
+          candidate = doubled;
+        } else {
+          break;
+        }
+      }
+      if (candidate !== Math.round(betterTau)) {
+        var st = candidate;
+        if (st > 0 && st < halfSize - 1) {
+          var ss0 = diff[st - 1], ss1 = diff[st], ss2 = diff[st + 1];
+          var sd = 2 * (ss0 - 2 * ss1 + ss2);
+          if (sd !== 0) st = st + (ss0 - ss2) / sd;
+        }
+        betterTau = st;
+      }
+
+      return { frequency: sampleRate / betterTau, confidence: 1 - diff[tau] };
+    }
+
+    function freqToSemitone(freq, saFreq) {
+      return 12 * Math.log2(freq / saFreq);
+    }
+
+    function semitoneToSwaraIndex(semitone) {
+      var idx = Math.round(semitone) % 12;
+      if (idx < 0) idx += 12;
+      return idx;
+    }
+
+    function getRagaRange(raga) {
+      var niSemi = raga.semitones[raga.semitones.length - 1];
+      var riSemi = raga.semitones[1];
+      return { minSemi: niSemi - 12, maxSemi: riSemi + 12 };
+    }
+
+    async function startLive() {
+      var stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        alert('Microphone access denied.');
+        return;
+      }
+
+      state.raga   = RAGAS[ragaSelect.value];
+      state.saFreq = SA_FREQUENCIES[saSelect.value];
+      state.pitchPoints  = [];
+      state.currentSwara = -1;
+      state.startTime    = Date.now();
+      state.stream       = stream;
+
+      var actx = new (window.AudioContext || window.webkitAudioContext)();
+      state.audioCtx = actx;
+
+      var source    = actx.createMediaStreamSource(stream);
+      var processor = actx.createScriptProcessor(2048, 1, 1);
+      state.processor = processor;
+
+      processor.onaudioprocess = function (e) {
+        var input = e.inputBuffer.getChannelData(0);
+        var frame = new Float32Array(2048);
+        for (var i = 0; i < 2048; i++) {
+          frame[i] = input[i] * 0.5 * (1 - Math.cos((2 * Math.PI * i) / 2047));
+        }
+
+        var result  = yinDetect(frame, actx.sampleRate);
+        var elapsed = (Date.now() - state.startTime) / 1000;
+
+        if (result.frequency > 0 && result.confidence > 0.6) {
+          state.pitchPoints.push({ time: elapsed, frequency: result.frequency, confidence: result.confidence });
+          state.currentSwara = semitoneToSwaraIndex(freqToSemitone(result.frequency, state.saFreq));
+        } else {
+          state.currentSwara = -1;
+        }
+
+        var cutoff = elapsed - LIVE_WINDOW_SECS;
+        while (state.pitchPoints.length > 0 && state.pitchPoints[0].time < cutoff) {
+          state.pitchPoints.shift();
+        }
+      };
+
+      source.connect(processor);
+      processor.connect(actx.destination);
+
+      state.isLive = true;
+      toggleBtn.textContent = 'Stop';
+
+      function animate() {
+        renderCanvas();
+        state.animFrame = requestAnimationFrame(animate);
+      }
+      state.animFrame = requestAnimationFrame(animate);
+    }
+
+    function stopLive() {
+      if (state.animFrame)  { cancelAnimationFrame(state.animFrame); state.animFrame = null; }
+      if (state.processor)  { state.processor.disconnect(); state.processor = null; }
+      if (state.audioCtx)   { state.audioCtx.close(); state.audioCtx = null; }
+      if (state.stream)     { state.stream.getTracks().forEach(t => t.stop()); state.stream = null; }
+
+      state.isLive = false;
+      state.pitchPoints  = [];
+      state.currentSwara = -1;
+      toggleBtn.textContent = 'Start';
+
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0c0c0c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function formatDuration(s) {
+      var m = Math.floor(s / 60);
+      return m + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+    }
+
+    function renderCanvas() {
+      var raga   = state.raga;
+      var saFreq = state.saFreq;
+      if (!raga || !saFreq) return;
+
+      var dpr   = window.devicePixelRatio || 1;
+      var rect  = canvas.parentElement.getBoundingClientRect();
+      var width = rect.width, height = rect.height;
+
+      canvas.width        = width * dpr;
+      canvas.height       = height * dpr;
+      canvas.style.width  = width + 'px';
+      canvas.style.height = height + 'px';
+
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      var pL = 52, pR = 16, pT = 16, pB = 28;
+      var plotW = width - pL - pR;
+      var plotH = height - pT - pB;
+
+      ctx.fillStyle = '#0c0c0c';
+      ctx.fillRect(0, 0, width, height);
+
+      var range     = getRagaRange(raga);
+      var minSemi   = range.minSemi;
+      var maxSemi   = range.maxSemi;
+      var semiRange = maxSemi - minSemi;
+
+      var elapsed        = (Date.now() - state.startTime) / 1000;
+      var windowEnd      = elapsed;
+      var windowStart    = Math.max(0, windowEnd - LIVE_WINDOW_SECS);
+      var windowDuration = Math.max(windowEnd - windowStart, 1);
+
+      for (var semi = minSemi; semi <= maxSemi; semi++) {
+        var pos = ((semi % 12) + 12) % 12;
+        if (raga.semitones.indexOf(pos) === -1) continue;
+
+        var y = pT + plotH - ((semi - minSemi) / semiRange) * plotH;
+
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pL, y);
+        ctx.lineTo(width - pR, y);
+        ctx.stroke();
+
+        var octave = Math.floor(semi / 12);
+        var label  = SWARA_NAMES[pos] +
+          (octave > 0 ? "'".repeat(octave) : octave < 0 ? '.'.repeat(-octave) : '');
+        ctx.fillStyle    = '#999';
+        ctx.font         = '10px monospace';
+        ctx.textAlign    = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, pL - 6, y);
+      }
+
+      var timeStep  = windowDuration <= 5 ? 1 : 2;
+      var firstMark = Math.ceil(windowStart / timeStep) * timeStep;
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'top';
+
+      for (var t = firstMark; t <= windowEnd; t += timeStep) {
+        var x = pL + ((t - windowStart) / windowDuration) * plotW;
+        ctx.strokeStyle = '#161616';
+        ctx.lineWidth   = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, pT);
+        ctx.lineTo(x, pT + plotH);
+        ctx.stroke();
+        ctx.fillStyle = '#444';
+        ctx.fillText(formatDuration(t), x, height - pB + 8);
+      }
+
+      for (var p = 0; p < state.pitchPoints.length; p++) {
+        var point    = state.pitchPoints[p];
+        var semitone = freqToSemitone(point.frequency, saFreq);
+
+        if (semitone < minSemi || semitone > maxSemi) continue;
+        if (point.time < windowStart || point.time > windowEnd) continue;
+
+        var swaraIdx = semitoneToSwaraIndex(semitone);
+        var inRaga   = raga.semitones.indexOf(swaraIdx) !== -1;
+
+        var px = pL + ((point.time - windowStart) / windowDuration) * plotW;
+        var py = pT + plotH - ((semitone - minSemi) / semiRange) * plotH;
+
+        var alpha = 0.4 + point.confidence * 0.6;
+        ctx.fillStyle = inRaga
+          ? 'rgba(76, 175, 80, ' + alpha + ')'
+          : 'rgba(244, 67, 54, ' + alpha + ')';
+
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.textAlign    = 'right';
+      ctx.textBaseline = 'top';
+      if (state.currentSwara >= 0) {
+        ctx.fillStyle = '#fff';
+        ctx.font      = 'bold 14px monospace';
+        ctx.fillText(SWARA_NAMES[state.currentSwara], width - pR, pT + 6);
+      } else {
+        ctx.fillStyle = '#555';
+        ctx.font      = 'bold 14px monospace';
+        ctx.fillText('\u2014', width - pR, pT + 6);
+      }
+
+      ctx.fillStyle = '#555';
+      ctx.font      = '10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(raga.name + '  |  Sa = ' + saSelect.value, pL + 8, pT + 6);
+
+      var lX = pL + 8, lY = pT + plotH - 10;
+      ctx.font         = '10px sans-serif';
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillStyle = '#4caf50';
+      ctx.beginPath(); ctx.arc(lX, lY, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#666';
+      ctx.fillText('In-raga', lX + 10, lY);
+
+      ctx.fillStyle = '#f44336';
+      ctx.beginPath(); ctx.arc(lX + 70, lY, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#666';
+      ctx.fillText('Out-of-raga', lX + 80, lY);
+    }
+
+    toggleBtn.addEventListener('click', function () {
+      if (state.isLive) stopLive(); else startLive();
+    });
+
+    window.addEventListener('resize', function () {
+      if (state.isLive) renderCanvas();
+    });
+
+    // --- Reference svara pads (independent harmonium playback) ---
+    var PAD_SVARA_NAMES = ['Sa', 'Ri', 'Ga', 'Ma', 'Pa', 'Da', 'Ni', 'Sȧ'];
+    var PAD_KEY_MAP = ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'];
+    var HARMONICS = [
+      { amp: 1.0,  mult: 1.0   },
+      { amp: 0.55, mult: 2.0   },
+      { amp: 0.40, mult: 3.0   },
+      { amp: 0.25, mult: 4.0   },
+      { amp: 0.18, mult: 5.0   },
+      { amp: 0.12, mult: 6.0   },
+      { amp: 0.30, mult: 1.003 },
+      { amp: 0.20, mult: 2.006 },
+    ];
+
+    var miniKeysEl = document.getElementById('mini-keys');
+    var playCtx = null;
+    var voices = {};
+
+    function playAudioCtx() {
+      if (!playCtx) playCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (playCtx.state === 'suspended') playCtx.resume();
+      return playCtx;
+    }
+
+    function startVoice(id, hz) {
+      if (voices[id]) return;
+      var ac = playAudioCtx();
+      var now = ac.currentTime;
+      var gain = ac.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(1.8, now + 0.04);
+      gain.connect(ac.destination);
+      var oscs = HARMONICS.map(function (h) {
+        var osc = ac.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(hz * h.mult, now);
+        var hg = ac.createGain();
+        hg.gain.value = h.amp / HARMONICS.length;
+        osc.connect(hg).connect(gain);
+        osc.start(now);
+        return osc;
+      });
+      voices[id] = { oscs: oscs, gain: gain };
+    }
+
+    function stopVoice(id) {
+      var v = voices[id];
+      if (!v) return;
+      var ac = playAudioCtx();
+      var now = ac.currentTime;
+      v.gain.gain.cancelScheduledValues(now);
+      v.gain.gain.setValueAtTime(v.gain.gain.value, now);
+      v.gain.gain.linearRampToValueAtTime(0, now + 0.12);
+      v.oscs.forEach(function (o) { o.stop(now + 0.14); });
+      delete voices[id];
+    }
+
+    var padByKey = {};   // keyboard char -> { el, hz, id }
+
+    function buildPads() {
+      miniKeysEl.innerHTML = '';
+      padByKey = {};
+      var raga   = RAGAS[ragaSelect.value];
+      var saFreq = SA_FREQUENCIES[saSelect.value];
+      var semis  = raga.semitones.concat([12]); // 7 svaras + upper Sa
+      semis.forEach(function (semi, i) {
+        if (i === 4) {
+          var g = document.createElement('div');
+          g.className = 'mini-gap';
+          miniKeysEl.appendChild(g);
+        }
+        var hz = saFreq * Math.pow(2, semi / 12);
+        var key = PAD_KEY_MAP[i];
+        var id = 'pad' + i;
+        var el = document.createElement('div');
+        el.className = 'mini-key';
+        el.innerHTML =
+          '<span class="mk-svara">' + PAD_SVARA_NAMES[i] + '</span>' +
+          '<span class="mk-key">' + (key === ';' ? ';' : key.toUpperCase()) + '</span>';
+        var press = function (e) { e.preventDefault(); startVoice(id, hz); el.classList.add('active'); };
+        var release = function () { stopVoice(id); el.classList.remove('active'); };
+        el.addEventListener('pointerdown', press);
+        el.addEventListener('pointerup', release);
+        el.addEventListener('pointerleave', release);
+        el.addEventListener('pointercancel', release);
+        miniKeysEl.appendChild(el);
+        padByKey[key] = { el: el, hz: hz, id: id };
+      });
+    }
+
+    window.addEventListener('keydown', function (e) {
+      var pad = padByKey[e.key.toLowerCase()];
+      if (!pad || e.repeat) return;
+      startVoice(pad.id, pad.hz);
+      pad.el.classList.add('active');
+    });
+    window.addEventListener('keyup', function (e) {
+      var pad = padByKey[e.key.toLowerCase()];
+      if (!pad) return;
+      stopVoice(pad.id);
+      pad.el.classList.remove('active');
+    });
+
+    // --- Metronome ---
+    var beatBtn  = document.getElementById('beat-btn');
+    var bpmInput = document.getElementById('bpm-input');
+    var beatTimer = null;
+
+    function tick() {
+      var ac = playAudioCtx();
+      var now = ac.currentTime;
+      var osc = ac.createOscillator();
+      var g = ac.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.6, now + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+      osc.connect(g).connect(ac.destination);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    }
+
+    function startBeat() {
+      var bpm = Math.min(240, Math.max(20, parseInt(bpmInput.value, 10) || 45));
+      var interval = 60000 / bpm;
+      tick();
+      beatTimer = setInterval(tick, interval);
+      beatBtn.classList.add('on');
+      beatBtn.textContent = 'Stop';
+    }
+
+    function stopBeat() {
+      if (beatTimer) { clearInterval(beatTimer); beatTimer = null; }
+      beatBtn.classList.remove('on');
+      beatBtn.textContent = 'Start';
+    }
+
+    beatBtn.addEventListener('click', function () {
+      if (beatTimer) stopBeat(); else startBeat();
+    });
+    bpmInput.addEventListener('change', function () {
+      if (beatTimer) { stopBeat(); startBeat(); }
+    });
+
+    // --- Tanpura drone (looping pluck cycle: lower Pa, Sa, Sa, lower Sa) ---
+    var tanpuraBtn = document.getElementById('tanpura-btn');
+    var TANPURA_SEMIS = [-5, 0, 0, -12];     // Pa(lower) Sa Sa Sa(lower)
+    var PLUCK_GAP = 1.25;                      // seconds between strings
+    var tanpuraTimer = null;
+    var tanpuraStep = 0;
+
+    function pluck(hz) {
+      var ac = playAudioCtx();
+      var now = ac.currentTime;
+
+      // jivari: bright on attack, mellows as it decays
+      var lp = ac.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.Q.value = 0.6;
+      lp.frequency.setValueAtTime(3400, now);
+      lp.frequency.exponentialRampToValueAtTime(650, now + 3.2);
+
+      var gain = ac.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.34, now + 0.09);   // soft attack
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.8); // long bloom
+      lp.connect(gain).connect(ac.destination);
+
+      // soft sine partials + a few slightly detuned twins for the shimmer
+      var parts = [
+        { mult: 1.0,  amp: 1.0  },
+        { mult: 2.0,  amp: 0.7  },
+        { mult: 3.0,  amp: 0.5  },
+        { mult: 4.0,  amp: 0.34 },
+        { mult: 5.0,  amp: 0.22 },
+        { mult: 6.0,  amp: 0.15 },
+        { mult: 8.0,  amp: 0.09 },
+        { mult: 2.01, amp: 0.4  },
+        { mult: 3.02, amp: 0.26 },
+      ];
+      var norm = parts.reduce(function (s, p) { return s + p.amp; }, 0);
+      parts.forEach(function (p) {
+        var osc = ac.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(hz * p.mult, now);
+        var hg = ac.createGain();
+        hg.gain.value = p.amp / norm;
+        osc.connect(hg).connect(lp);
+        osc.start(now);
+        osc.stop(now + 4.0);
+      });
+    }
+
+    function startTanpura() {
+      tanpuraStep = 0;
+      var fire = function () {
+        var saFreq = SA_FREQUENCIES[saSelect.value];
+        var semi = TANPURA_SEMIS[tanpuraStep % TANPURA_SEMIS.length];
+        pluck(saFreq * Math.pow(2, semi / 12));
+        tanpuraStep++;
+      };
+      fire();
+      tanpuraTimer = setInterval(fire, PLUCK_GAP * 1000);
+      tanpuraBtn.classList.add('on');
+      tanpuraBtn.textContent = 'Stop';
+    }
+
+    function stopTanpura() {
+      if (tanpuraTimer) { clearInterval(tanpuraTimer); tanpuraTimer = null; }
+      tanpuraBtn.classList.remove('on');
+      tanpuraBtn.textContent = 'Start';
+    }
+
+    tanpuraBtn.addEventListener('click', function () {
+      if (tanpuraTimer) stopTanpura(); else startTanpura();
+    });
+
+    ragaSelect.addEventListener('change', function () {
+      if (state.isLive) state.raga = RAGAS[ragaSelect.value];
+      buildPads();
+    });
+    saSelect.addEventListener('change', function () {
+      if (state.isLive) state.saFreq = SA_FREQUENCIES[saSelect.value];
+      buildPads();
+    });
+    buildPads();
+  })();
+  </script>
+</body>
+</html>

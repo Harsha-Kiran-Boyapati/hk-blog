@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Svara Keyboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #111;
+      color: #eee;
+    }
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 16px 16px 0;
+    }
+    #controls {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 16px 0;
+      border-bottom: 1px solid #222;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+    .control-group label {
+      font-size: 0.75rem; color: #888; font-weight: 500; white-space: nowrap;
+    }
+    .control-group select {
+      background: #1a1a1a; color: #eee; border: 1px solid #333;
+      padding: 8px 10px; border-radius: 6px; font-size: 0.9rem; cursor: pointer;
+    }
+    .control-group select:hover { border-color: #555; }
+
+    .octave-toggle { display: flex; gap: 6px; }
+    .oct-btn {
+      background: #1a1a1a; color: #888; border: 1px solid #333;
+      padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .oct-btn:hover { border-color: #555; }
+    .oct-btn.on { background: #1565c0; color: #fff; border-color: #1565c0; }
+
+    .spacer { flex: 1; }
+    .home-link { color: #888; text-decoration: none; font-size: 0.85rem; align-self: flex-end; }
+    .home-link:hover { color: #ccc; }
+
+    .stage {
+      flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 24px;
+    }
+    .tagline { color: #777; font-size: 0.9rem; }
+
+    .keys { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+    .key-row { display: flex; gap: 8px; align-items: center; }
+    .row-label {
+      width: 60px; text-align: right; padding-right: 8px;
+      color: #666; font-size: 0.68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .key {
+      width: 58px; height: 104px;
+      background: #1a1a1a; border: 1px solid #333; border-radius: 9px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end;
+      padding-bottom: 12px; gap: 7px;
+      cursor: pointer; user-select: none;
+      transition: background 0.06s, transform 0.06s, border-color 0.06s;
+    }
+    .key:hover { border-color: #555; }
+    .key .svara { font-size: 19px; font-weight: 700; }
+    .key .kbd {
+      font-size: 11px; font-weight: 600; color: #888;
+      background: #111; border: 1px solid #333; border-radius: 5px; padding: 2px 8px;
+    }
+    .key.active {
+      background: #1565c0; color: #fff; border-color: #1565c0;
+      transform: translateY(3px);
+    }
+    .key.active .kbd { color: #fff; border-color: rgba(255,255,255,0.3); }
+    .gap { width: 26px; }
+    .hint { color: #555; font-size: 0.8rem; text-align: center; max-width: 460px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="controls">
+      <div class="control-group">
+        <label for="raga-select">Raga</label>
+        <select id="raga-select">
+          <option value="mayamalavagowla">Mayamalavagowla</option>
+          <option value="shankarabharanam">Shankarabharanam</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="sa-select">Sa</label>
+        <select id="sa-select">
+          <option value="D3">D3</option>
+          <option value="C#3">C#3</option>
+          <option value="C3" selected>C3</option>
+          <option value="B2">B2</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Octaves</label>
+        <div class="octave-toggle">
+          <button class="oct-btn" id="toggle-lower">Lower</button>
+          <button class="oct-btn" id="toggle-upper">Upper</button>
+        </div>
+      </div>
+      <span class="spacer"></span>
+      <a class="home-link" href="../">&larr; Carnatic tools</a>
+    </div>
+
+    <div class="stage">
+      <div class="tagline" id="tagline"></div>
+      <div class="keys" id="keys"></div>
+      <p class="hint">Press &amp; hold a key (or pad) to sustain the note — keyboard, mouse, and touch all work.<br>Enable the <b>Lower</b> and <b>Upper</b> octaves from the buttons above if needed.</p>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const RAGAS = {
+      mayamalavagowla: { name: 'Mayamalavagowla', semitones: [0, 1, 4, 5, 7, 8, 11] },
+      shankarabharanam: { name: 'Shankarabharanam', semitones: [0, 2, 4, 5, 7, 9, 11] },
+    };
+    const SA_FREQUENCIES = { 'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'B2': 123.47 };
+
+    // 8 per octave: Sa Ri Ga Ma Pa Da Ni + that octave's upper Sa
+    const SVARA_BASE = ['Sa', 'Ri', 'Ga', 'Ma', 'Pa', 'Da', 'Ni', 'Sa'];
+    const OCTAVES = [
+      { name: 'Upper',  base:  12, keys: ['q', 'w', 'e', 'r', 'u', 'i', 'o', 'p'] },
+      { name: 'Middle', base:   0, keys: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'] },
+      { name: 'Lower',  base: -12, keys: ['z', 'x', 'c', 'v', 'm', ',', '.', '/'] },
+    ];
+
+    // Carnatic octave dots: dot above per octave up (tara), dot below per octave down (mandra)
+    function octaveMark(semis) {
+      const oct = Math.floor(semis / 12);
+      if (oct > 0) return '̇'.repeat(oct);  // combining dot above
+      if (oct < 0) return '̣'.repeat(-oct); // combining dot below
+      return '';
+    }
+
+    const HARMONICS = [
+      { amp: 1.0,  mult: 1.0   },
+      { amp: 0.55, mult: 2.0   },
+      { amp: 0.40, mult: 3.0   },
+      { amp: 0.25, mult: 4.0   },
+      { amp: 0.18, mult: 5.0   },
+      { amp: 0.12, mult: 6.0   },
+      { amp: 0.30, mult: 1.003 },
+      { amp: 0.20, mult: 2.006 },
+    ];
+
+    const ragaSelect = document.getElementById('raga-select');
+    const saSelect   = document.getElementById('sa-select');
+    const keysEl     = document.getElementById('keys');
+    const taglineEl  = document.getElementById('tagline');
+    const lowerBtn   = document.getElementById('toggle-lower');
+    const upperBtn   = document.getElementById('toggle-upper');
+
+    const visible = { Upper: false, Middle: true, Lower: false };
+
+    let ctx = null;
+    function audioCtx() {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    }
+
+    let saFreq = SA_FREQUENCIES['C3'];
+    let rows = [];
+
+    function buildSvaras() {
+      const raga = RAGAS[ragaSelect.value].semitones; // 7 svaras
+      rows = OCTAVES.map(function (oct) {
+        const items = SVARA_BASE.map(function (name, i) {
+          const rel = (i < 7 ? raga[i] : 12); // within-octave semitone; 8th = upper Sa
+          const semis = rel + oct.base;
+          return { svara: name + octaveMark(semis), semis: semis, key: oct.keys[i] };
+        });
+        return { name: oct.name, items: items };
+      });
+    }
+
+    function hzFor(semis) { return saFreq * Math.pow(2, semis / 12); }
+
+    const voices = {}; // key -> { oscs, gain }
+
+    function startVoice(item) {
+      if (voices[item.key]) return;
+      const ac = audioCtx();
+      const now = ac.currentTime;
+      const hz = hzFor(item.semis);
+
+      const gain = ac.createGain();
+      const peak = 0.85;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.04);
+      gain.connect(ac.destination);
+
+      const oscs = HARMONICS.map(function (h) {
+        const osc = ac.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(hz * h.mult, now);
+        const hg = ac.createGain();
+        hg.gain.value = h.amp / HARMONICS.length;
+        osc.connect(hg).connect(gain);
+        osc.start(now);
+        return osc;
+      });
+
+      voices[item.key] = { oscs: oscs, gain: gain };
+    }
+
+    function stopVoice(key) {
+      const v = voices[key];
+      if (!v) return;
+      const ac = audioCtx();
+      const now = ac.currentTime;
+      const release = 0.12;
+      v.gain.gain.cancelScheduledValues(now);
+      v.gain.gain.setValueAtTime(v.gain.gain.value, now);
+      v.gain.gain.linearRampToValueAtTime(0, now + release);
+      v.oscs.forEach(function (o) { o.stop(now + release + 0.02); });
+      delete voices[key];
+    }
+
+    let elByKey = {};
+    let itemByKey = {};
+
+    function buildKeyboard() {
+      keysEl.innerHTML = '';
+      elByKey = {};
+      itemByKey = {};
+
+      rows.forEach(function (row) {
+        if (!visible[row.name]) return;
+        const rowEl = document.createElement('div');
+        rowEl.className = 'key-row';
+
+        const lbl = document.createElement('div');
+        lbl.className = 'row-label';
+        lbl.textContent = row.name;
+        rowEl.appendChild(lbl);
+
+        row.items.forEach(function (item, idx) {
+          itemByKey[item.key] = item;
+          if (idx === 4) {
+            const g = document.createElement('div');
+            g.className = 'gap';
+            rowEl.appendChild(g);
+          }
+          const el = document.createElement('div');
+          el.className = 'key';
+          el.innerHTML =
+            '<div class="svara">' + item.svara + '</div>' +
+            '<div class="kbd">' + item.key.toUpperCase() + '</div>';
+          rowEl.appendChild(el);
+          elByKey[item.key] = el;
+
+          const press = function (e) { e.preventDefault(); startVoice(item); el.classList.add('active'); };
+          const release = function () { stopVoice(item.key); el.classList.remove('active'); };
+          el.addEventListener('pointerdown', press);
+          el.addEventListener('pointerup', release);
+          el.addEventListener('pointerleave', release);
+          el.addEventListener('pointercancel', release);
+        });
+
+        keysEl.appendChild(rowEl);
+      });
+
+      taglineEl.textContent = RAGAS[ragaSelect.value].name + '  ·  Sa = ' + saSelect.value + '  ·  harmonium tone';
+    }
+
+    window.addEventListener('keydown', function (e) {
+      const item = itemByKey[e.key.toLowerCase()];
+      if (!item || e.repeat) return;
+      e.preventDefault();
+      startVoice(item);
+      if (elByKey[item.key]) elByKey[item.key].classList.add('active');
+    });
+    window.addEventListener('keyup', function (e) {
+      const item = itemByKey[e.key.toLowerCase()];
+      if (!item) return;
+      stopVoice(item.key);
+      if (elByKey[item.key]) elByKey[item.key].classList.remove('active');
+    });
+
+    function stopAllVoices() { Object.keys(voices).forEach(stopVoice); }
+
+    ragaSelect.addEventListener('change', function () { buildSvaras(); buildKeyboard(); });
+    saSelect.addEventListener('change', function () {
+      saFreq = SA_FREQUENCIES[saSelect.value];
+      buildKeyboard();
+    });
+
+    lowerBtn.addEventListener('click', function () {
+      visible.Lower = !visible.Lower;
+      lowerBtn.classList.toggle('on', visible.Lower);
+      stopAllVoices();
+      buildKeyboard();
+    });
+    upperBtn.addEventListener('click', function () {
+      visible.Upper = !visible.Upper;
+      upperBtn.classList.toggle('on', visible.Upper);
+      stopAllVoices();
+      buildKeyboard();
+    });
+
+    buildSvaras();
+    buildKeyboard();
+  })();
+  </script>
+</body>
+</html>
