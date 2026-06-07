@@ -149,11 +149,13 @@
       gap: 8px;
     }
     .rec-duration { font-size: 0.72rem; color: #555; }
-    .rec-rename, .rec-delete {
+    .rec-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .rec-rename, .rec-delete, .rec-download {
       background: none; border: none; color: #444; cursor: pointer;
       font-size: 0.8rem; padding: 2px 4px; border-radius: 3px;
     }
     .rec-rename:hover { color: #4a9eff; background: rgba(74,158,255,0.08); }
+    .rec-download:hover { color: #4caf50; background: rgba(76,175,80,0.08); }
     .rec-delete:hover { color: #f44336; background: rgba(244,67,54,0.08); }
     .rec-name-input {
       flex: 1;
@@ -480,7 +482,10 @@
         '</div>' +
         '<div class="rec-meta-row">' +
           '<span class="rec-duration">' + formatDuration(rec.duration) + '</span>' +
-          '<button class="rec-delete" title="Delete">⌫</button>' +
+          '<span class="rec-actions">' +
+            '<button class="rec-download" title="Download">⤓</button>' +
+            '<button class="rec-delete" title="Delete">⌫</button>' +
+          '</span>' +
         '</div>' +
         '<div class="rec-playbar">' +
           '<button class="rec-playbtn" data-state="stopped">▶</button>' +
@@ -492,6 +497,10 @@
       el.querySelector('.rec-rename').addEventListener('click', function (e) {
         e.stopPropagation();
         startRename(el, rec);
+      });
+      el.querySelector('.rec-download').addEventListener('click', function (e) {
+        e.stopPropagation();
+        downloadRec(rec);
       });
       el.querySelector('.rec-delete').addEventListener('click', function (e) {
         e.stopPropagation();
@@ -516,6 +525,24 @@
         togglePlayback(rec, el);
       });
       return el;
+    }
+
+    function downloadRec(rec) {
+      if (!rec.audioBlob) return;
+      var ext = '.webm';
+      var t = rec.audioBlob.type || '';
+      if (t.indexOf('ogg') >= 0)      ext = '.ogg';
+      else if (t.indexOf('mp4') >= 0 || t.indexOf('m4a') >= 0) ext = '.m4a';
+      else if (t.indexOf('wav') >= 0) ext = '.wav';
+      var safe = (rec.name || 'recording').replace(/[\\/:*?"<>|]/g, '-');
+      var url  = URL.createObjectURL(rec.audioBlob);
+      var a    = document.createElement('a');
+      a.href = url;
+      a.download = safe + ext;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
 
     function startRename(el, rec) {
