@@ -145,11 +145,25 @@
       gap: 8px;
     }
     .rec-duration { font-size: 0.72rem; color: #555; }
-    .rec-delete {
+    .rec-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .rec-rename, .rec-delete {
       background: none; border: none; color: #444; cursor: pointer;
       font-size: 0.8rem; padding: 2px 4px; border-radius: 3px;
     }
+    .rec-rename:hover { color: #4a9eff; background: rgba(74,158,255,0.08); }
     .rec-delete:hover { color: #f44336; background: rgba(244,67,54,0.08); }
+    .rec-name-input {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid #4a9eff;
+      color: #eee;
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 3px 5px;
+      border-radius: 3px;
+      margin-bottom: 4px;
+    }
+    .rec-name-input:focus { outline: none; }
 
     .rec-playbar {
       display: none;
@@ -400,6 +414,19 @@
       });
     }
 
+    function dbPut(record) {
+      // Overwrite an existing record (used for rename). Returns Promise.
+      if (!db) return Promise.reject(new Error('DB not open'));
+      return new Promise(function (resolve, reject) {
+        var tx   = db.transaction('recordings', 'readwrite');
+        var store = tx.objectStore('recordings');
+        tx.onerror = tx.onabort = function (e) { reject(e.target.error || tx.error); };
+        var req  = store.put(record);
+        req.onsuccess = function () { resolve(); };
+        req.onerror   = function (e) { reject(e.target.error); };
+      });
+    }
+
     var EMPTY_STATE_HTML = '<p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>';
 
     function renderRecList(recs) {
@@ -422,7 +449,10 @@
         '<span class="rec-name"></span>' +
         '<div class="rec-meta-row">' +
           '<span class="rec-duration">' + formatDuration(rec.duration) + '</span>' +
-          '<button class="rec-delete" title="Delete">⌫</button>' +
+          '<span class="rec-actions">' +
+            '<button class="rec-rename" title="Rename">✎</button>' +
+            '<button class="rec-delete" title="Delete">⌫</button>' +
+          '</span>' +
         '</div>' +
         '<div class="rec-playbar">' +
           '<button class="rec-playbtn" data-state="stopped">▶</button>' +
@@ -430,6 +460,10 @@
         '</div>';
       el.querySelector('.rec-name').textContent = rec.name;
 
+      el.querySelector('.rec-rename').addEventListener('click', function (e) {
+        e.stopPropagation();
+        startRename(el, rec);
+      });
       el.querySelector('.rec-delete').addEventListener('click', function (e) {
         e.stopPropagation();
         deleteRec(rec.id, el);
@@ -442,6 +476,39 @@
         togglePlayback(rec, el);
       });
       return el;
+    }
+
+    function startRename(el, rec) {
+      var nameEl = el.querySelector('.rec-name');
+      if (el.querySelector('.rec-name-input')) return;   // already editing
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'rec-name-input';
+      input.value = rec.name;
+      nameEl.style.display = 'none';
+      nameEl.parentNode.insertBefore(input, nameEl);
+      input.focus();
+      input.select();
+
+      var settled = false;
+      function finish(save) {
+        if (settled) return;
+        settled = true;
+        var v = input.value.trim();
+        input.remove();
+        nameEl.style.display = '';
+        if (save && v && v !== rec.name) {
+          rec.name = v;
+          nameEl.textContent = v;
+          dbPut(rec).catch(function (err) { console.warn('Rename failed:', err); });
+        }
+      }
+      input.addEventListener('click', function (e) { e.stopPropagation(); });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter')      { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') { finish(false); }
+      });
+      input.addEventListener('blur', function () { finish(true); });
     }
 
     function deleteRec(id, el) {
@@ -838,13 +905,11 @@
     }
 
     function formatRecName() {
-      var raga = RAGAS[ragaSelect.value].name;
-      var sa   = saSelect.value;
       var d    = new Date();
       var mon  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
       var hh   = String(d.getHours()).padStart(2, '0');
       var mm   = String(d.getMinutes()).padStart(2, '0');
-      return raga + ' · ' + sa + ' · ' + mon + ' ' + d.getDate() + ' ' + hh + ':' + mm;
+      return mon + ' ' + d.getDate() + ' ' + hh + ':' + mm;
     }
 
     function renderCanvas() {
