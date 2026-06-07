@@ -422,6 +422,7 @@
     }
 
     function deleteRec(id, el) {
+      if (el === state.playbackEl) stopPlayback();
       dbDelete(id).then(function () {
         el.remove();
         var listEl = document.getElementById('rec-list');
@@ -649,6 +650,7 @@
     }
 
     function startPlayback(rec, el) {
+      if (recState.isRecording) return;
       // Stop live detection while playing back
       if (state.isLive) {
         state.isLive = false;
@@ -691,7 +693,7 @@
       // Start canvas animation loop
       function pbAnimate() {
         if (!state.playbackMode) return;
-        renderCanvas();
+        if (!state.playbackAudio || !state.playbackAudio.paused) renderCanvas();
         state.animFrame = requestAnimationFrame(pbAnimate);
       }
       state.animFrame = requestAnimationFrame(pbAnimate);
