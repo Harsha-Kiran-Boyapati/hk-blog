@@ -332,9 +332,11 @@
     function dbSave(record) {
       // record: { name, createdAt, duration, raga, sa, audioBlob, pitchData }
       // Returns Promise<id>
+      if (!db) return Promise.reject(new Error('DB not open'));
       return new Promise(function (resolve, reject) {
         var tx   = db.transaction('recordings', 'readwrite');
         var store = tx.objectStore('recordings');
+        tx.onerror = tx.onabort = function (e) { reject(e.target.error || tx.error); };
         var req  = store.add(record);
         req.onsuccess = function (e) { resolve(e.target.result); };
         req.onerror   = function (e) { reject(e.target.error); };
@@ -343,9 +345,11 @@
 
     function dbGetAll() {
       // Returns Promise<Array> — all records including blobs
+      if (!db) return Promise.reject(new Error('DB not open'));
       return new Promise(function (resolve, reject) {
         var tx   = db.transaction('recordings', 'readonly');
         var store = tx.objectStore('recordings');
+        tx.onerror = tx.onabort = function (e) { reject(e.target.error || tx.error); };
         var req  = store.getAll();
         req.onsuccess = function (e) { resolve(e.target.result); };
         req.onerror   = function (e) { reject(e.target.error); };
@@ -353,9 +357,11 @@
     }
 
     function dbDelete(id) {
+      if (!db) return Promise.reject(new Error('DB not open'));
       return new Promise(function (resolve, reject) {
         var tx   = db.transaction('recordings', 'readwrite');
         var store = tx.objectStore('recordings');
+        tx.onerror = tx.onabort = function (e) { reject(e.target.error || tx.error); };
         var req  = store.delete(id);
         req.onsuccess = function () { resolve(); };
         req.onerror   = function (e) { reject(e.target.error); };
