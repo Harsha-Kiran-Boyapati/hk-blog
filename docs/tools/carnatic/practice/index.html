@@ -40,6 +40,26 @@
       width: 100%;
     }
 
+    #panel-toggle {
+      position: fixed;
+      top: 8px;
+      left: 10px;
+      z-index: 20;
+      width: 30px;
+      height: 30px;
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 1.15rem;
+      line-height: 1;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #panel-toggle:hover { color: #fff; }
+
     #sidebar {
       width: 280px;
       flex-shrink: 0;
@@ -48,13 +68,18 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      transition: width 0.2s ease;
+    }
+    #sidebar.collapsed {
+      width: 0;
+      border-right: none;
     }
 
     .rec-header {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 14px 12px;
+      padding: 14px 12px 14px 46px;
       border-bottom: 1px solid #1c1c1c;
       flex-shrink: 0;
     }
@@ -223,6 +248,7 @@
 </head>
 <body>
   <div id="app">
+    <button id="panel-toggle" title="Toggle recordings">☰</button>
     <div id="sidebar">
       <div class="rec-header">
         <button id="rec-btn" class="rec-record-btn">Start</button>
@@ -1192,6 +1218,11 @@
       buildPads();
     });
     buildPads();
+
+    // --- Panel toggle ---
+    document.getElementById('panel-toggle').addEventListener('click', function () {
+      document.getElementById('sidebar').classList.toggle('collapsed');
+    });
 
     // --- Init: open IndexedDB ---
     openDB().then(function (d) {
