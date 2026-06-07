@@ -254,6 +254,15 @@
         </div>
         <div class="vdiv"></div>
         <div class="field">
+          <span class="lbl">Record</span>
+          <div class="field-row">
+            <span id="rec-dot" style="display:none;color:#f44336;font-size:1.1rem;line-height:1;">●</span>
+            <span id="rec-timer" style="display:none;font-size:0.82rem;color:#aaa;min-width:32px;"></span>
+            <button id="rec-btn" class="btn">Start</button>
+          </div>
+        </div>
+        <div class="vdiv"></div>
+        <div class="field">
           <span class="lbl">Beats</span>
           <div class="field-row">
             <input id="bpm-input" type="number" min="20" max="240" step="1" value="45">
@@ -373,7 +382,21 @@
       console.log('recordings loaded:', recs.length);
     }
 
+    function prependRecItem(rec) {
+      // stubbed — implemented in Task 4
+      console.log('saved recording:', rec.id, rec.name, rec.duration.toFixed(1) + 's');
+    }
+
     const LIVE_WINDOW_SECS = 10;
+
+    var recState = {
+      isRecording:   false,
+      mediaRecorder: null,
+      chunks:        [],
+      startTime:     0,
+      points:        [],        // pitch points timestamped from recording start
+      timerInterval: null,
+    };
 
     const state = {
       isLive: false,
@@ -497,6 +520,13 @@
 
         if (result.frequency > 0 && result.confidence > 0.6) {
           state.pitchPoints.push({ time: elapsed, frequency: result.frequency, confidence: result.confidence });
+          if (recState.isRecording) {
+            recState.points.push({
+              time:       (Date.now() - recState.startTime) / 1000,
+              frequency:  result.frequency,
+              confidence: result.confidence,
+            });
+          }
           state.currentSwara = semitoneToSwaraIndex(freqToSemitone(result.frequency, state.saFreq));
         } else {
           state.currentSwara = -1;
@@ -522,6 +552,7 @@
     }
 
     function stopLive() {
+      if (recState.isRecording) stopRecording();
       if (state.animFrame)  { cancelAnimationFrame(state.animFrame); state.animFrame = null; }
       if (state.processor)  { state.processor.disconnect(); state.processor = null; }
       if (state.audioCtx)   { state.audioCtx.close(); state.audioCtx = null; }
@@ -537,9 +568,88 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    var recDotEl   = document.getElementById('rec-dot');
+    var recTimerEl = document.getElementById('rec-timer');
+    var recBtn     = document.getElementById('rec-btn');
+
+    async function startRecording() {
+      if (!state.isLive) await startLive();
+      if (!state.stream) return;          // mic denied
+      recState.chunks  = [];
+      recState.points  = [];
+      recState.startTime = Date.now();
+
+      var mimeType = ['audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+        .find(function (t) { return MediaRecorder.isTypeSupported(t); }) || '';
+      recState.mediaRecorder = new MediaRecorder(
+        state.stream,
+        mimeType ? { mimeType: mimeType } : {}
+      );
+      recState.mediaRecorder.ondataavailable = function (e) {
+        if (e.data.size > 0) recState.chunks.push(e.data);
+      };
+      recState.mediaRecorder.onstop = function () {
+        var blob = new Blob(recState.chunks, { type: recState.mediaRecorder.mimeType });
+        var dur  = (Date.now() - recState.startTime) / 1000;
+        var rec  = {
+          name:      formatRecName(),
+          createdAt: Date.now(),
+          duration:  dur,
+          raga:      ragaSelect.value,
+          sa:        saSelect.value,
+          audioBlob: blob,
+          pitchData: recState.points.slice(),
+        };
+        dbSave(rec).then(function (id) {
+          rec.id = id;
+          prependRecItem(rec);
+        }).catch(function (err) {
+          console.warn('Failed to save recording:', err);
+        });
+      };
+      recState.mediaRecorder.start();
+      recState.isRecording = true;
+
+      recDotEl.style.display   = 'inline';
+      recTimerEl.style.display = 'inline';
+      recBtn.textContent       = 'Stop';
+      recBtn.classList.add('on');
+
+      recState.timerInterval = setInterval(function () {
+        recTimerEl.textContent = formatDuration((Date.now() - recState.startTime) / 1000);
+      }, 500);
+    }
+
+    function stopRecording() {
+      if (!recState.isRecording) return;
+      recState.isRecording = false;
+      clearInterval(recState.timerInterval);
+      recState.mediaRecorder.stop();
+
+      recDotEl.style.display   = 'none';
+      recTimerEl.style.display = 'none';
+      recTimerEl.textContent   = '';
+      recBtn.textContent       = 'Start';
+      recBtn.classList.remove('on');
+    }
+
+    recBtn.addEventListener('click', function () {
+      if (recState.isRecording) stopRecording(); else startRecording();
+    });
+
     function formatDuration(s) {
       var m = Math.floor(s / 60);
       return m + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+    }
+
+    function formatRecName() {
+      var raga = RAGAS[ragaSelect.value].name;
+      var sa   = saSelect.value;
+      var d    = new Date();
+      var mon  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+      var hh   = String(d.getHours()).padStart(2, '0');
+      var mm   = String(d.getMinutes()).padStart(2, '0');
+      return raga + ' · ' + sa + ' · ' + mon + ' ' + d.getDate() + ' ' + hh + ':' + mm;
     }
 
     function renderCanvas() {
