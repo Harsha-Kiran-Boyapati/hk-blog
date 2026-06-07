@@ -44,37 +44,39 @@
       width: 280px;
       flex-shrink: 0;
       background: #0e0e0e;
-      border-left: 1px solid #1c1c1c;
-      display: flex;
-      flex-direction: row;
-      transition: width 0.2s ease;
-      overflow: hidden;
-    }
-    #sidebar.collapsed { width: 32px; }
-
-    #sidebar-toggle {
-      width: 32px;
-      flex-shrink: 0;
-      background: none;
-      border: none;
       border-right: 1px solid #1c1c1c;
-      color: #555;
-      cursor: pointer;
-      font-size: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      align-self: stretch;
-    }
-    #sidebar-toggle:hover { color: #999; background: #111; }
-
-    #sidebar-inner {
-      flex: 1;
-      min-width: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+    }
+
+    .rec-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 12px;
+      border-bottom: 1px solid #1c1c1c;
+      flex-shrink: 0;
+    }
+    .rec-record-btn {
+      flex: 1;
+      background: #f44336;
+      border: none;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+    }
+    .rec-record-btn:hover { background: #e53935; }
+    .rec-record-btn.on { background: #b71c1c; }
+    .rec-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
     }
     .sidebar-head {
       padding: 14px 12px 10px;
@@ -221,6 +223,20 @@
 </head>
 <body>
   <div id="app">
+    <div id="sidebar">
+      <div class="rec-header">
+        <button id="rec-btn" class="rec-record-btn">Start</button>
+        <div class="rec-status">
+          <span id="rec-dot" style="display:none;color:#f44336;font-size:1.1rem;line-height:1;">●</span>
+          <span id="rec-timer" style="display:none;font-size:0.82rem;color:#aaa;min-width:32px;"></span>
+        </div>
+      </div>
+      <div class="sidebar-head">Recordings</div>
+      <div id="rec-list">
+        <p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>
+      </div>
+    </div>
+
     <div id="main">
     <div id="controls">
       <div class="cluster">
@@ -254,15 +270,6 @@
         </div>
         <div class="vdiv"></div>
         <div class="field">
-          <span class="lbl">Record</span>
-          <div class="field-row">
-            <span id="rec-dot" style="display:none;color:#f44336;font-size:1.1rem;line-height:1;">●</span>
-            <span id="rec-timer" style="display:none;font-size:0.82rem;color:#aaa;min-width:32px;"></span>
-            <button id="rec-btn" class="btn">Start</button>
-          </div>
-        </div>
-        <div class="vdiv"></div>
-        <div class="field">
           <span class="lbl">Beats</span>
           <div class="field-row">
             <input id="bpm-input" type="number" min="20" max="240" step="1" value="45">
@@ -281,16 +288,6 @@
       <canvas id="pitch-canvas"></canvas>
     </div>
     </div><!-- /#main -->
-
-    <div id="sidebar" class="collapsed">
-      <button id="sidebar-toggle" title="Recordings">›</button>
-      <div id="sidebar-inner">
-        <div class="sidebar-head">Recordings</div>
-        <div id="rec-list">
-          <p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script>
@@ -1195,13 +1192,6 @@
       buildPads();
     });
     buildPads();
-
-    // --- Sidebar toggle ---
-    var sidebarEl = document.getElementById('sidebar');
-    document.getElementById('sidebar-toggle').addEventListener('click', function () {
-      var collapsed = sidebarEl.classList.toggle('collapsed');
-      this.textContent = collapsed ? '›' : '‹';
-    });
 
     // --- Init: open IndexedDB ---
     openDB().then(function (d) {
