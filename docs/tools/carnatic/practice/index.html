@@ -149,13 +149,20 @@
       gap: 8px;
     }
     .rec-duration { font-size: 0.72rem; color: #555; }
-    .rec-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .rec-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
     .rec-rename, .rec-delete, .rec-download {
       background: none; border: none; color: #444; cursor: pointer;
       font-size: 0.8rem; padding: 2px 4px; border-radius: 3px;
     }
+    .rec-download {
+      color: #4caf50;
+      font-size: 1.05rem;
+      line-height: 1;
+      padding: 4px 7px;
+      border: 1px solid rgba(76,175,80,0.35);
+    }
     .rec-rename:hover { color: #4a9eff; background: rgba(74,158,255,0.08); }
-    .rec-download:hover { color: #4caf50; background: rgba(76,175,80,0.08); }
+    .rec-download:hover { color: #5fcf6a; background: rgba(76,175,80,0.15); border-color: rgba(76,175,80,0.6); }
     .rec-delete:hover { color: #f44336; background: rgba(244,67,54,0.08); }
     .rec-name-input {
       flex: 1;
