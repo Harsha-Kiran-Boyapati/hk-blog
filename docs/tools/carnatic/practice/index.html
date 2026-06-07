@@ -377,10 +377,12 @@
       });
     }
 
+    var EMPTY_STATE_HTML = '<p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>';
+
     function renderRecList(recs) {
       var listEl = document.getElementById('rec-list');
       if (!recs || recs.length === 0) {
-        listEl.innerHTML = '<p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>';
+        listEl.innerHTML = EMPTY_STATE_HTML;
         return;
       }
       // Sort newest-first
@@ -394,7 +396,7 @@
       el.className = 'rec-item';
       el.dataset.id = rec.id;
       el.innerHTML =
-        '<span class="rec-name">' + rec.name + '</span>' +
+        '<span class="rec-name"></span>' +
         '<div class="rec-meta-row">' +
           '<span class="rec-duration">' + formatDuration(rec.duration) + '</span>' +
           '<button class="rec-delete" title="Delete">⌫</button>' +
@@ -403,6 +405,7 @@
           '<button class="rec-playbtn" data-state="stopped">▶</button>' +
           '<span class="rec-timestr">0:00 / ' + formatDuration(rec.duration) + '</span>' +
         '</div>';
+      el.querySelector('.rec-name').textContent = rec.name;
 
       el.querySelector('.rec-delete').addEventListener('click', function (e) {
         e.stopPropagation();
@@ -423,7 +426,7 @@
         el.remove();
         var listEl = document.getElementById('rec-list');
         if (!listEl.querySelector('.rec-item')) {
-          listEl.innerHTML = '<p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>';
+          listEl.innerHTML = EMPTY_STATE_HTML;
         }
       }).catch(function (err) {
         console.warn('Delete failed:', err);
