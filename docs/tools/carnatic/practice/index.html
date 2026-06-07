@@ -367,6 +367,7 @@
     </div><!-- /#main -->
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
   <script>
   (function () {
     'use strict';
@@ -534,22 +535,52 @@
       return el;
     }
 
-    function downloadRec(rec) {
-      if (!rec.audioBlob) return;
-      var ext = '.webm';
-      var t = rec.audioBlob.type || '';
-      if (t.indexOf('ogg') >= 0)      ext = '.ogg';
-      else if (t.indexOf('mp4') >= 0 || t.indexOf('m4a') >= 0) ext = '.m4a';
-      else if (t.indexOf('wav') >= 0) ext = '.wav';
-      var safe = (rec.name || 'recording').replace(/[\\/:*?"<>|]/g, '-');
-      var url  = URL.createObjectURL(rec.audioBlob);
-      var a    = document.createElement('a');
+    function triggerDownload(blob, filename) {
+      var url = URL.createObjectURL(blob);
+      var a   = document.createElement('a');
       a.href = url;
-      a.download = safe + ext;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    // Encode a mono AudioBuffer to an MP3 blob via lamejs.
+    function audioBufferToMp3(buf) {
+      var enc = new lamejs.Mp3Encoder(1, buf.sampleRate, 128);
+      var ch  = buf.getChannelData(0);
+      var samples = new Int16Array(ch.length);
+      for (var i = 0; i < ch.length; i++) {
+        var s = Math.max(-1, Math.min(1, ch[i]));
+        samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      var block = 1152, data = [];
+      for (var j = 0; j < samples.length; j += block) {
+        var part = enc.encodeBuffer(samples.subarray(j, j + block));
+        if (part.length > 0) data.push(part);
+      }
+      var tail = enc.flush();
+      if (tail.length > 0) data.push(tail);
+      return new Blob(data, { type: 'audio/mpeg' });
+    }
+
+    async function downloadRec(rec) {
+      if (!rec.audioBlob) return;
+      var safe = (rec.name || 'recording').replace(/[\\/:*?"<>|]/g, '-');
+      if (typeof lamejs === 'undefined') {
+        alert('MP3 encoder failed to load — check your connection and try again.');
+        return;
+      }
+      try {
+        var actx = new (window.AudioContext || window.webkitAudioContext)();
+        var audioBuf = await actx.decodeAudioData(await rec.audioBlob.arrayBuffer());
+        actx.close();
+        triggerDownload(audioBufferToMp3(audioBuf), safe + '.mp3');
+      } catch (err) {
+        console.warn('MP3 export failed:', err);
+        alert('Could not export MP3 from this recording.');
+      }
     }
 
     function startRename(el, rec) {
