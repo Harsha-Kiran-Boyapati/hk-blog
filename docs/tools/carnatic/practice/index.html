@@ -378,13 +378,68 @@
     }
 
     function renderRecList(recs) {
-      // stubbed — implemented in Task 4
-      console.log('recordings loaded:', recs.length);
+      var listEl = document.getElementById('rec-list');
+      if (!recs || recs.length === 0) {
+        listEl.innerHTML = '<p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>';
+        return;
+      }
+      // Sort newest-first
+      var sorted = recs.slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+      listEl.innerHTML = '';
+      sorted.forEach(function (rec) { listEl.appendChild(makeRecEl(rec)); });
+    }
+
+    function makeRecEl(rec) {
+      var el = document.createElement('div');
+      el.className = 'rec-item';
+      el.dataset.id = rec.id;
+      el.innerHTML =
+        '<span class="rec-name">' + rec.name + '</span>' +
+        '<div class="rec-meta-row">' +
+          '<span class="rec-duration">' + formatDuration(rec.duration) + '</span>' +
+          '<button class="rec-delete" title="Delete">⌫</button>' +
+        '</div>' +
+        '<div class="rec-playbar">' +
+          '<button class="rec-playbtn" data-state="stopped">▶</button>' +
+          '<span class="rec-timestr">0:00 / ' + formatDuration(rec.duration) + '</span>' +
+        '</div>';
+
+      el.querySelector('.rec-delete').addEventListener('click', function (e) {
+        e.stopPropagation();
+        deleteRec(rec.id, el);
+      });
+      el.querySelector('.rec-playbtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        togglePlayback(rec, el);
+      });
+      el.addEventListener('click', function () {
+        togglePlayback(rec, el);
+      });
+      return el;
+    }
+
+    function deleteRec(id, el) {
+      dbDelete(id).then(function () {
+        el.remove();
+        var listEl = document.getElementById('rec-list');
+        if (!listEl.querySelector('.rec-item')) {
+          listEl.innerHTML = '<p class="rec-empty">No recordings yet.<br>Hit Record to start.</p>';
+        }
+      }).catch(function (err) {
+        console.warn('Delete failed:', err);
+      });
     }
 
     function prependRecItem(rec) {
-      // stubbed — implemented in Task 4
-      console.log('saved recording:', rec.id, rec.name, rec.duration.toFixed(1) + 's');
+      var listEl = document.getElementById('rec-list');
+      var empty  = listEl.querySelector('.rec-empty');
+      if (empty) empty.remove();
+      listEl.insertBefore(makeRecEl(rec), listEl.firstChild);
+    }
+
+    function togglePlayback(rec, el) {
+      // stubbed — implemented in Task 5
+      console.log('play/stop', rec.id);
     }
 
     const LIVE_WINDOW_SECS = 10;
