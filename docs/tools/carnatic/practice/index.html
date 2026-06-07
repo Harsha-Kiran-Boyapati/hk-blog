@@ -441,8 +441,22 @@
     }
 
     function togglePlayback(rec, el) {
-      // stubbed — implemented in Task 5
-      console.log('play/stop', rec.id);
+      if (state.playbackEl === el && state.playbackMode) {
+        // Pause/resume
+        var audio = state.playbackAudio;
+        var btn   = el.querySelector('.rec-playbtn');
+        if (audio.paused) {
+          audio.play();
+          btn.textContent = '⏸';
+          btn.dataset.state = 'playing';
+        } else {
+          audio.pause();
+          btn.textContent = '▶';
+          btn.dataset.state = 'paused';
+        }
+      } else {
+        startPlayback(rec, el);
+      }
     }
 
     const LIVE_WINDOW_SECS = 10;
@@ -468,6 +482,12 @@
       animFrame: null,
       raga: null,
       saFreq: null,
+      playbackMode:   false,
+      playbackPoints: [],
+      playbackRaga:   null,
+      playbackSa:     null,
+      playbackAudio:  null,
+      playbackEl:     null,   // the currently-active sidebar item element
     };
 
     const toggleBtn  = document.getElementById('toggle-btn');
@@ -600,6 +620,7 @@
       source.connect(processor);
       processor.connect(actx.destination);
 
+      if (state.playbackMode) stopPlayback();
       state.isLive = true;
       toggleBtn.textContent = 'Stop';
 
@@ -623,6 +644,86 @@
       toggleBtn.textContent = 'Start';
 
       var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0c0c0c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function startPlayback(rec, el) {
+      // Stop live detection while playing back
+      if (state.isLive) {
+        state.isLive = false;
+        if (state.animFrame) { cancelAnimationFrame(state.animFrame); state.animFrame = null; }
+        // Keep mic stream open — don't disconnect source/processor
+      }
+      // Stop any existing playback
+      if (state.playbackMode) stopPlayback();
+
+      // Set up audio
+      var audio = new Audio();
+      audio.src = URL.createObjectURL(rec.audioBlob);
+      audio.play().catch(function (e) { console.warn('Audio play failed:', e); });
+
+      state.playbackMode   = true;
+      state.playbackPoints = rec.pitchData;
+      state.playbackRaga   = rec.raga;
+      state.playbackSa     = rec.sa;
+      state.playbackAudio  = audio;
+      state.playbackEl     = el;
+
+      el.classList.add('active');
+      var playBtn = el.querySelector('.rec-playbtn');
+      playBtn.dataset.state = 'playing';
+      playBtn.textContent   = '⏸';
+
+      // Update time display while playing
+      var timeStr = el.querySelector('.rec-timestr');
+      var totalStr = formatDuration(rec.duration);
+      var tickId = setInterval(function () {
+        if (!state.playbackMode) { clearInterval(tickId); return; }
+        timeStr.textContent = formatDuration(audio.currentTime) + ' / ' + totalStr;
+      }, 250);
+
+      audio.addEventListener('ended', function () {
+        clearInterval(tickId);
+        stopPlayback();
+      });
+
+      // Start canvas animation loop
+      function pbAnimate() {
+        if (!state.playbackMode) return;
+        renderCanvas();
+        state.animFrame = requestAnimationFrame(pbAnimate);
+      }
+      state.animFrame = requestAnimationFrame(pbAnimate);
+    }
+
+    function stopPlayback() {
+      if (!state.playbackMode) return;
+      if (state.animFrame) { cancelAnimationFrame(state.animFrame); state.animFrame = null; }
+
+      if (state.playbackAudio) {
+        URL.revokeObjectURL(state.playbackAudio.src);
+        state.playbackAudio.pause();
+        state.playbackAudio = null;
+      }
+      if (state.playbackEl) {
+        state.playbackEl.classList.remove('active');
+        var pb = state.playbackEl.querySelector('.rec-playbtn');
+        if (pb) { pb.dataset.state = 'stopped'; pb.textContent = '▶'; }
+        state.playbackEl = null;
+      }
+
+      state.playbackMode   = false;
+      state.playbackPoints = [];
+      state.playbackRaga   = null;
+      state.playbackSa     = null;
+
+      // Clear canvas
+      var ctx = canvas.getContext('2d');
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width  = rect.width  * dpr;
+      canvas.height = rect.height * dpr;
       ctx.fillStyle = '#0c0c0c';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -724,8 +825,8 @@
     }
 
     function renderCanvas() {
-      var raga   = state.raga;
-      var saFreq = state.saFreq;
+      var raga   = state.playbackMode ? RAGAS[state.playbackRaga]   : state.raga;
+      var saFreq = state.playbackMode ? SA_FREQUENCIES[state.playbackSa] : state.saFreq;
       if (!raga || !saFreq) return;
 
       var dpr   = window.devicePixelRatio || 1;
@@ -752,7 +853,9 @@
       var maxSemi   = range.maxSemi;
       var semiRange = maxSemi - minSemi;
 
-      var elapsed        = (Date.now() - state.startTime) / 1000;
+      var elapsed = state.playbackMode
+        ? (state.playbackAudio ? state.playbackAudio.currentTime : 0)
+        : (Date.now() - state.startTime) / 1000;
       var windowEnd      = elapsed;
       var windowStart    = Math.max(0, windowEnd - LIVE_WINDOW_SECS);
       var windowDuration = Math.max(windowEnd - windowStart, 1);
@@ -798,8 +901,9 @@
         ctx.fillText(formatDuration(t), x, height - pB + 8);
       }
 
-      for (var p = 0; p < state.pitchPoints.length; p++) {
-        var point    = state.pitchPoints[p];
+      var pts = state.playbackMode ? state.playbackPoints : state.pitchPoints;
+      for (var p = 0; p < pts.length; p++) {
+        var point    = pts[p];
         var semitone = freqToSemitone(point.frequency, saFreq);
 
         if (semitone < minSemi || semitone > maxSemi) continue;
@@ -836,7 +940,8 @@
       ctx.fillStyle = '#555';
       ctx.font      = '10px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(raga.name + '  |  Sa = ' + saSelect.value, pL + 8, pT + 6);
+      var saLabel = state.playbackMode ? state.playbackSa : saSelect.value;
+      ctx.fillText(raga.name + '  |  Sa = ' + saLabel, pL + 8, pT + 6);
 
       var lX = pL + 8, lY = pT + plotH - 10;
       ctx.font         = '10px sans-serif';
