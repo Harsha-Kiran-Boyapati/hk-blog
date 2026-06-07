@@ -312,6 +312,61 @@
       'B2':  123.47,
     };
 
+    // --- IndexedDB ---
+    var db = null;
+
+    function openDB() {
+      return new Promise(function (resolve, reject) {
+        var req = indexedDB.open('carnatic-practice', 1);
+        req.onupgradeneeded = function (e) {
+          var d = e.target.result;
+          if (!d.objectStoreNames.contains('recordings')) {
+            d.createObjectStore('recordings', { keyPath: 'id', autoIncrement: true });
+          }
+        };
+        req.onsuccess = function (e) { resolve(e.target.result); };
+        req.onerror   = function (e) { reject(e.target.error); };
+      });
+    }
+
+    function dbSave(record) {
+      // record: { name, createdAt, duration, raga, sa, audioBlob, pitchData }
+      // Returns Promise<id>
+      return new Promise(function (resolve, reject) {
+        var tx   = db.transaction('recordings', 'readwrite');
+        var store = tx.objectStore('recordings');
+        var req  = store.add(record);
+        req.onsuccess = function (e) { resolve(e.target.result); };
+        req.onerror   = function (e) { reject(e.target.error); };
+      });
+    }
+
+    function dbGetAll() {
+      // Returns Promise<Array> — all records including blobs
+      return new Promise(function (resolve, reject) {
+        var tx   = db.transaction('recordings', 'readonly');
+        var store = tx.objectStore('recordings');
+        var req  = store.getAll();
+        req.onsuccess = function (e) { resolve(e.target.result); };
+        req.onerror   = function (e) { reject(e.target.error); };
+      });
+    }
+
+    function dbDelete(id) {
+      return new Promise(function (resolve, reject) {
+        var tx   = db.transaction('recordings', 'readwrite');
+        var store = tx.objectStore('recordings');
+        var req  = store.delete(id);
+        req.onsuccess = function () { resolve(); };
+        req.onerror   = function (e) { reject(e.target.error); };
+      });
+    }
+
+    function renderRecList(recs) {
+      // stubbed — implemented in Task 4
+      console.log('recordings loaded:', recs.length);
+    }
+
     const LIVE_WINDOW_SECS = 10;
 
     const state = {
@@ -854,6 +909,16 @@
     document.getElementById('sidebar-toggle').addEventListener('click', function () {
       var collapsed = sidebarEl.classList.toggle('collapsed');
       this.textContent = collapsed ? '›' : '‹';
+    });
+
+    // --- Init: open IndexedDB ---
+    openDB().then(function (d) {
+      db = d;
+      return dbGetAll();
+    }).then(function (recs) {
+      renderRecList(recs);
+    }).catch(function (err) {
+      console.warn('IndexedDB unavailable:', err);
     });
   })();
   </script>
