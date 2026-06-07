@@ -391,6 +391,7 @@
 
     var recState = {
       isRecording:   false,
+      starting:      false,
       mediaRecorder: null,
       chunks:        [],
       startTime:     0,
@@ -573,51 +574,63 @@
     var recBtn     = document.getElementById('rec-btn');
 
     async function startRecording() {
-      if (!state.isLive) await startLive();
-      if (!state.stream) return;          // mic denied
-      recState.chunks  = [];
-      recState.points  = [];
-      recState.startTime = Date.now();
+      if (recState.isRecording || recState.starting) return;
+      recState.starting = true;
+      try {
+        if (!state.isLive) await startLive();
+        if (!state.stream) return;          // mic denied
+        recState.chunks  = [];
+        recState.points  = [];
+        recState.startTime = Date.now();
 
-      var mimeType = ['audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
-        .find(function (t) { return MediaRecorder.isTypeSupported(t); }) || '';
-      recState.mediaRecorder = new MediaRecorder(
-        state.stream,
-        mimeType ? { mimeType: mimeType } : {}
-      );
-      recState.mediaRecorder.ondataavailable = function (e) {
-        if (e.data.size > 0) recState.chunks.push(e.data);
-      };
-      recState.mediaRecorder.onstop = function () {
-        var blob = new Blob(recState.chunks, { type: recState.mediaRecorder.mimeType });
-        var dur  = (Date.now() - recState.startTime) / 1000;
-        var rec  = {
-          name:      formatRecName(),
-          createdAt: Date.now(),
-          duration:  dur,
-          raga:      ragaSelect.value,
-          sa:        saSelect.value,
-          audioBlob: blob,
-          pitchData: recState.points.slice(),
-        };
-        dbSave(rec).then(function (id) {
-          rec.id = id;
-          prependRecItem(rec);
-        }).catch(function (err) {
-          console.warn('Failed to save recording:', err);
-        });
-      };
-      recState.mediaRecorder.start();
-      recState.isRecording = true;
+        try {
+          var mimeType = ['audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+            .find(function (t) { return MediaRecorder.isTypeSupported(t); }) || '';
+          recState.mediaRecorder = new MediaRecorder(
+            state.stream,
+            mimeType ? { mimeType: mimeType } : {}
+          );
+          recState.mediaRecorder.ondataavailable = function (e) {
+            if (e.data.size > 0) recState.chunks.push(e.data);
+          };
+          recState.mediaRecorder.onstop = function () {
+            var blob = new Blob(recState.chunks, { type: recState.mediaRecorder.mimeType });
+            var dur  = (Date.now() - recState.startTime) / 1000;
+            var rec  = {
+              name:      formatRecName(),
+              createdAt: Date.now(),
+              duration:  dur,
+              raga:      ragaSelect.value,
+              sa:        saSelect.value,
+              audioBlob: blob,
+              pitchData: recState.points.slice(),
+            };
+            dbSave(rec).then(function (id) {
+              rec.id = id;
+              prependRecItem(rec);
+            }).catch(function (err) {
+              console.warn('Failed to save recording:', err);
+            });
+          };
+          recState.mediaRecorder.start();
+          recState.isRecording = true;
 
-      recDotEl.style.display   = 'inline';
-      recTimerEl.style.display = 'inline';
-      recBtn.textContent       = 'Stop';
-      recBtn.classList.add('on');
+          recDotEl.style.display   = 'inline';
+          recTimerEl.style.display = 'inline';
+          recBtn.textContent       = 'Stop';
+          recBtn.classList.add('on');
 
-      recState.timerInterval = setInterval(function () {
-        recTimerEl.textContent = formatDuration((Date.now() - recState.startTime) / 1000);
-      }, 500);
+          recState.timerInterval = setInterval(function () {
+            recTimerEl.textContent = formatDuration((Date.now() - recState.startTime) / 1000);
+          }, 500);
+        } catch (err) {
+          console.warn('Failed to start recording:', err);
+          recState.mediaRecorder = null;
+          alert('Recording is not supported in this browser.');
+        }
+      } finally {
+        recState.starting = false;
+      }
     }
 
     function stopRecording() {
