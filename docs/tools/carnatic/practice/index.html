@@ -651,12 +651,10 @@
 
     function startPlayback(rec, el) {
       if (recState.isRecording) return;
-      // Stop live detection while playing back
-      if (state.isLive) {
-        state.isLive = false;
-        if (state.animFrame) { cancelAnimationFrame(state.animFrame); state.animFrame = null; }
-        // Keep mic stream open — don't disconnect source/processor
-      }
+      // Stop live detection while playing back — full teardown so the mic
+      // stream/AudioContext/processor aren't orphaned when the visualizer is
+      // restarted later (getUserMedia permission persists, so no re-prompt).
+      if (state.isLive) stopLive();
       // Stop any existing playback
       if (state.playbackMode) stopPlayback();
 
