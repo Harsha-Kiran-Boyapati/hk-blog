@@ -129,14 +129,20 @@
     .rec-item:hover { background: #141414; }
     .rec-item.active { background: #0d1a2e; }
 
+    .rec-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
     .rec-name {
+      flex: 1;
+      min-width: 0;
       font-size: 0.78rem;
       color: #ccc;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      display: block;
-      margin-bottom: 4px;
     }
     .rec-meta-row {
       display: flex;
@@ -145,7 +151,6 @@
       gap: 8px;
     }
     .rec-duration { font-size: 0.72rem; color: #555; }
-    .rec-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
     .rec-rename, .rec-delete {
       background: none; border: none; color: #444; cursor: pointer;
       font-size: 0.8rem; padding: 2px 4px; border-radius: 3px;
@@ -153,7 +158,8 @@
     .rec-rename:hover { color: #4a9eff; background: rgba(74,158,255,0.08); }
     .rec-delete:hover { color: #f44336; background: rgba(244,67,54,0.08); }
     .rec-name-input {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       background: #1a1a1a;
       border: 1px solid #4a9eff;
       color: #eee;
@@ -161,7 +167,6 @@
       font-size: 0.78rem;
       padding: 3px 5px;
       border-radius: 3px;
-      margin-bottom: 4px;
     }
     .rec-name-input:focus { outline: none; }
 
@@ -446,13 +451,13 @@
       el.className = 'rec-item';
       el.dataset.id = rec.id;
       el.innerHTML =
-        '<span class="rec-name"></span>' +
+        '<div class="rec-name-row">' +
+          '<span class="rec-name"></span>' +
+          '<button class="rec-rename" title="Rename">✎</button>' +
+        '</div>' +
         '<div class="rec-meta-row">' +
           '<span class="rec-duration">' + formatDuration(rec.duration) + '</span>' +
-          '<span class="rec-actions">' +
-            '<button class="rec-rename" title="Rename">✎</button>' +
-            '<button class="rec-delete" title="Delete">⌫</button>' +
-          '</span>' +
+          '<button class="rec-delete" title="Delete">⌫</button>' +
         '</div>' +
         '<div class="rec-playbar">' +
           '<button class="rec-playbtn" data-state="stopped">▶</button>' +
@@ -1145,13 +1150,20 @@
       });
     }
 
+    function isTypingTarget(e) {
+      var t = e.target;
+      return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    }
+
     window.addEventListener('keydown', function (e) {
+      if (isTypingTarget(e)) return;     // don't trigger notes while typing (e.g. renaming)
       var pad = padByKey[e.key.toLowerCase()];
       if (!pad || e.repeat) return;
       startVoice(pad.id, pad.hz);
       pad.el.classList.add('active');
     });
     window.addEventListener('keyup', function (e) {
+      if (isTypingTarget(e)) return;
       var pad = padByKey[e.key.toLowerCase()];
       if (!pad) return;
       stopVoice(pad.id);
