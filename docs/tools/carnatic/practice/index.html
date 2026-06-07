@@ -84,19 +84,34 @@
       flex-shrink: 0;
     }
     .rec-record-btn {
-      flex: 1;
-      background: #f44336;
-      border: none;
-      color: #fff;
-      font-size: 0.9rem;
-      font-weight: 600;
-      padding: 10px 14px;
-      border-radius: 6px;
+      flex-shrink: 0;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      border: 2px solid #555;
+      padding: 0;
       cursor: pointer;
-      letter-spacing: 0.02em;
+      position: relative;
     }
-    .rec-record-btn:hover { background: #e53935; }
-    .rec-record-btn.on { background: #b71c1c; }
+    .rec-record-btn:hover { border-color: #777; }
+    .rec-record-btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #f44336;
+      transition: width 0.15s ease, height 0.15s ease, border-radius 0.15s ease;
+    }
+    .rec-record-btn.on::before {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+    }
     .rec-status {
       display: flex;
       align-items: center;
@@ -295,7 +310,7 @@
     <button id="panel-toggle" title="Toggle recordings">☰</button>
     <div id="sidebar">
       <div class="rec-header">
-        <button id="rec-btn" class="rec-record-btn">Start</button>
+        <button id="rec-btn" class="rec-record-btn" title="Record"></button>
         <div class="rec-status">
           <span id="rec-dot" style="display:none;color:#f44336;font-size:1.1rem;line-height:1;">●</span>
           <span id="rec-timer" style="display:none;font-size:0.82rem;color:#aaa;min-width:32px;"></span>
@@ -911,7 +926,6 @@
 
           recDotEl.style.display   = 'inline';
           recTimerEl.style.display = 'inline';
-          recBtn.textContent       = 'Stop';
           recBtn.classList.add('on');
 
           recState.timerInterval = setInterval(function () {
@@ -936,7 +950,6 @@
       recDotEl.style.display   = 'none';
       recTimerEl.style.display = 'none';
       recTimerEl.textContent   = '';
-      recBtn.textContent       = 'Start';
       recBtn.classList.remove('on');
     }
 
