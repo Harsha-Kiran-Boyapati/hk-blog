@@ -184,7 +184,32 @@
       display: flex; align-items: center; justify-content: center;
     }
     .rec-playbtn:hover { border-color: #555; color: #fff; }
-    .rec-timestr { font-size: 0.7rem; color: #555; }
+    .rec-seek {
+      flex: 1;
+      min-width: 0;
+      height: 3px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #333;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .rec-seek::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: #4a9eff;
+      cursor: pointer;
+    }
+    .rec-seek::-moz-range-thumb {
+      width: 11px; height: 11px;
+      border: none;
+      border-radius: 50%;
+      background: #4a9eff;
+      cursor: pointer;
+    }
+    .rec-timestr { font-size: 0.7rem; color: #555; flex-shrink: 0; white-space: nowrap; }
 
     .rec-empty {
       padding: 24px 12px;
@@ -461,6 +486,7 @@
         '</div>' +
         '<div class="rec-playbar">' +
           '<button class="rec-playbtn" data-state="stopped">▶</button>' +
+          '<input type="range" class="rec-seek" min="0" max="' + rec.duration + '" step="0.01" value="0">' +
           '<span class="rec-timestr">0:00 / ' + formatDuration(rec.duration) + '</span>' +
         '</div>';
       el.querySelector('.rec-name').textContent = rec.name;
@@ -476,6 +502,17 @@
       el.querySelector('.rec-playbtn').addEventListener('click', function (e) {
         e.stopPropagation();
         togglePlayback(rec, el);
+      });
+      var seekEl = el.querySelector('.rec-seek');
+      seekEl.addEventListener('click',     function (e) { e.stopPropagation(); });
+      seekEl.addEventListener('pointerdown', function () { seekEl._seeking = true; });
+      seekEl.addEventListener('pointerup',   function () { seekEl._seeking = false; });
+      seekEl.addEventListener('input', function (e) {
+        e.stopPropagation();
+        if (state.playbackEl === el && state.playbackAudio) {
+          state.playbackAudio.currentTime = parseFloat(seekEl.value) || 0;
+          if (state.playbackAudio.paused) renderCanvas();   // refresh frozen frame while paused
+        }
       });
       el.addEventListener('click', function () {
         togglePlayback(rec, el);
@@ -770,12 +807,15 @@
       playBtn.dataset.state = 'playing';
       playBtn.textContent   = '⏸';
 
-      // Update time display while playing
+      // Update time display + seek position while playing
       var timeStr = el.querySelector('.rec-timestr');
+      var seekEl  = el.querySelector('.rec-seek');
       var totalStr = formatDuration(rec.duration);
+      seekEl.value = 0;
       var tickId = setInterval(function () {
         if (!state.playbackMode) { clearInterval(tickId); return; }
         timeStr.textContent = formatDuration(audio.currentTime) + ' / ' + totalStr;
+        if (!seekEl._seeking) seekEl.value = audio.currentTime;
       }, 250);
 
       audio.addEventListener('ended', function () {
