@@ -769,7 +769,7 @@
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            echoCancellation: true,
+            echoCancellation: false,
             noiseSuppression: false,   // keep voice harmonics intact
             autoGainControl: true,
           }
