@@ -1112,8 +1112,16 @@
         if (semitone < minSemi || semitone > maxSemi) continue;
         if (point.time < windowStart || point.time > windowEnd) continue;
 
-        var swaraIdx = semitoneToSwaraIndex(semitone);
-        var inRaga   = raga.semitones.indexOf(swaraIdx) !== -1;
+        // In-raga only if within ±25 cents of a raga swara (0.25 semitone),
+        // measured as circular distance within the octave.
+        var mod = ((semitone % 12) + 12) % 12;
+        var minDist = Infinity;
+        for (var k = 0; k < raga.semitones.length; k++) {
+          var d = Math.abs(mod - raga.semitones[k]);
+          if (12 - d < d) d = 12 - d;
+          if (d < minDist) minDist = d;
+        }
+        var inRaga = minDist <= 0.25;
 
         var px = pL + ((point.time - windowStart) / windowDuration) * plotW;
         var py = pT + plotH - ((semitone - minSemi) / semiRange) * plotH;
