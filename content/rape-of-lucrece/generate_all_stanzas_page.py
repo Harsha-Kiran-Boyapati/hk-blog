@@ -27,31 +27,7 @@ TEMPLATE = """<!DOCTYPE html>
 <title>The Rape of Lucrece - All Stanzas (searchable)</title>
 <style>
   :root {
-    --bg: #fafafa;
-    --panel: #ffffff;
-    --ink: #333333;
-    --muted: #6b6b6b;
-    --accent: #8B4513;
-    --accent2: #D2691E;
-    --rule: #e6e0d8;
-    --badge-bg: #f8f4f0;
-    --hit: #ffe9a8;
-    --barh: 120px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #17140f;
-      --panel: #1f1b15;
-      --ink: #eae4da;
-      --muted: #a89e90;
-      --accent: #e0a066;
-      --accent2: #d2691e;
-      --rule: #3a322a;
-      --badge-bg: #2a231b;
-      --hit: #5c4a1a;
-    }
-  }
-  :root[data-theme="dark"] {
+    color-scheme: dark;
     --bg: #17140f;
     --panel: #1f1b15;
     --ink: #eae4da;
@@ -61,6 +37,7 @@ TEMPLATE = """<!DOCTYPE html>
     --rule: #3a322a;
     --badge-bg: #2a231b;
     --hit: #5c4a1a;
+    --barh: 120px;
   }
 
   * { box-sizing: border-box; }
