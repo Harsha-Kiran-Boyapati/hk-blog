@@ -157,6 +157,32 @@ def get_css_styles():
             margin-bottom: 20px;
             border-left: 4px solid #4682B4;
         }
+
+        .full-text-card {
+            background: #f8f4f0;
+            border: 2px solid #D2691E;
+            border-radius: 8px;
+            padding: 18px 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .full-text-card a {
+            color: #8B4513;
+            font-weight: bold;
+            font-size: 1.1em;
+            text-decoration: none;
+        }
+
+        .full-text-card a:hover {
+            text-decoration: underline;
+        }
+
+        .full-text-card p {
+            margin: 8px 0 0;
+            color: #666;
+            font-size: 0.9em;
+        }
         
         .overview-grid {
             display: grid;
@@ -248,6 +274,11 @@ def create_overview_page(stanza_files):
         phrase meanings, literary devices, and overall significance in the context of the poem.
     </div>
     
+    <div class="full-text-card">
+        <a href="all-stanzas.html">📜 Read all 265 stanzas on one page →</a>
+        <p>The complete poem text, searchable — find any phrase and see at once which stanza it belongs to.</p>
+    </div>
+
     <h2>📚 Stanza Navigation</h2>
     <div class="overview-grid">
     """
