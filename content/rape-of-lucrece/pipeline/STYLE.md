@@ -1,6 +1,6 @@
 # Stanza explanation style guide
 
-Every stanza gets **7 line entries and 1 summary**. Each line entry has a short
+Every stanza gets **7 line entries and 1 overall meaning**. Each line entry has a short
 `meaning`, and, whenever the line is not obvious, a `why` and sometimes an `example`.
 The aim is that a reader with no background can finish a line's entry and say what
 the line means *and why the words mean that*. A bare paraphrase is not enough.
@@ -17,7 +17,7 @@ the line means *and why the words mean that*. A bare paraphrase is not enough.
       "why": "<optional: how the words give that meaning>",
       "example": "<optional: a concrete case that makes the idea click>" }
   ],
-  "summary": "<2-4 sentences>"
+  "summary": "<the stanza as connected modern prose>"
 }
 ```
 
@@ -82,14 +82,16 @@ reason not to, and never reuse its wording.
    best reading available. Do not state facts about history or word origins that
    you are not sure of.
 9. **No filler.** No preamble, no sign-off, no "Here, Shakespeare...".
-10. **Summary: the stanza's point, in as few words as it takes, often one
-    sentence.** It must say something the seven entries do not already say by
-    listing them: what the stanza is doing as a whole (a list of X, an accusation,
-    a plea, a turn in the story). Never retell the lines in order or re-list their
-    contents; the reader has just read them. Run longer only when the point comes
-    from the whole and cannot be said briefly (an argument, a change of mood).
-    No mention of the previous or next stanza, and no "sets up", "leads into" or
-    "goes on". Nothing the seven entries do not support.
+10. **Overall meaning (the `summary` field): the whole stanza as connected modern
+    prose.** The line entries are fragments, and the poem's sentences run across
+    lines, so this puts them back together as sentences a reader can follow in
+    one go. Repeating what the lines say is the point. Keep to the order of the
+    stanza and the speaker's voice: "you" when Lucrece speaks to Time or
+    Opportunity, "I" when she says "I", third person for narration. If the stanza
+    is a list of "To..." clauses, open with the main clause it needs, such as "It
+    is Time's job to". **Add nothing.** Every clause must come from one of the
+    line entries. No commentary and no labels like "Lucrece lists" or "Lucrece
+    asks", no glosses in brackets, no mention of other stanzas.
 11. **Punctuation:** use only . , - ? ! in your own sentences. No semicolons,
     colons or long dashes. Quotation marks around quoted words and brackets for
     glosses are allowed. Where a poem line ends in ; or :, end the `meaning` in a
