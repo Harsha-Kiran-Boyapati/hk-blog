@@ -1,0 +1,43 @@
+{
+  "stanza": 134,
+  "lines": [
+    {
+      "n": 1,
+      "text": "'Why hath thy servant, Opportunity,",
+      "meaning": "Time, why has your servant Opportunity"
+    },
+    {
+      "n": 2,
+      "text": "Betray'd the hours thou gavest me to repose,",
+      "meaning": "betrayed the hours of rest (repose) you gave me,"
+    },
+    {
+      "n": 3,
+      "text": "Cancell'd my fortunes, and enchained me",
+      "meaning": "wiped out my good fortune, and chained me"
+    },
+    {
+      "n": 4,
+      "text": "To endless date of never-ending woes?",
+      "meaning": "to a never-ending term (date) of sorrow?",
+      "why": "\"Date\" is a legal word for the length of a term, like a prison sentence or a lease."
+    },
+    {
+      "n": 5,
+      "text": "Time's office is to fine the hate of foes;",
+      "meaning": "Time's proper job (office) is to bring enemies' hatred to an end (fine),"
+    },
+    {
+      "n": 6,
+      "text": "To eat up errors by opinion bred,",
+      "meaning": "to consume mistaken beliefs that people's opinions create,"
+    },
+    {
+      "n": 7,
+      "text": "Not spend the dowry of a lawful bed.",
+      "meaning": "not to squander (spend) the blessings (dowry) of a lawful marriage.",
+      "why": "A dowry was the wealth a wife brought into a marriage. Here it stands for everything good in her marriage, which Tarquin's act has destroyed."
+    }
+  ],
+  "summary": "Lucrece reproaches Time. Its job is to end hatred and correct mistakes, not to wreck a lawful marriage."
+}

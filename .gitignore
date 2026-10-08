@@ -43,3 +43,7 @@ themes/
 *.tmp
 *.bak
 *.orig
+
+# Copyrighted reference text (LitCharts); used only to check our own wording, never published
+content/rape-of-lucrece/lit-charts.txt
+content/rape-of-lucrece/pipeline/reference/
