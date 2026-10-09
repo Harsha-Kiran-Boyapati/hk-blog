@@ -81,6 +81,12 @@ reason not to, and never reuse its wording.
    fits the text and say it as fact. It need not be certain, but it must be the
    best reading available. Do not state facts about history or word origins that
    you are not sure of.
+   **Stay inside the stanza.** The poem's plot and the neighbouring stanzas may be
+   used to work out who and what a line is about. They must not be used to add
+   reasons, effects, morals or ideas that the stanza and its neighbours do not
+   state. Bad example: "and it is Time that lets one generation follow another",
+   added to a line that only says Time shows a grandmother her granddaughters.
+   If a sentence says something the text does not, delete it.
 9. **No filler.** No preamble, no sign-off, no "Here, Shakespeare...".
 10. **Overall meaning (the `summary` field): the whole stanza as connected modern
     prose.** The line entries are fragments, and the poem's sentences run across
@@ -113,11 +119,13 @@ After reading only a line and its entry, could a reader who has never met the
 line say what it means and why? If they would still be puzzled by how the words
 produce the meaning, the entry needs a `why` (or a better one). Then ask the
 opposite question of every `why` and `example` that is there: if it were deleted,
-would the reader lose anything? If not, delete it.
+would the reader lose anything? If not, delete it. Finally ask of every
+sentence you wrote: is this in the stanza or its neighbours, or did I add it? If
+I added it, delete it.
 
 ## Example (stanza 137, line 5)
 
 > **To mock the subtle in themselves beguiled,**
 > *Meaning:* Time makes fools of clever people by letting them be tricked by their own scheming.
-> *Why:* "Subtle" is used here as a noun for crafty, scheming people. "Beguiled" means deceived, and "in themselves" means by their own doing, so these are people who have fooled themselves. "Mock" is what Time does to them: it exposes them as dupes of their own cunning.
+> *Why:* "Subtle" is used here as a noun for crafty, scheming people. "Beguiled" means deceived, and "in themselves" means by their own doing, so these are people who have fooled themselves. "Mock" is what Time does to them. It exposes them as dupes of their own cunning.
 > *Example:* A con man so taken with his own lies that they end up ruining him.
