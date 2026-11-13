@@ -325,6 +325,14 @@
     <div id="controls">
       <div class="cluster">
         <div class="field">
+          <span class="lbl">Octave</span>
+          <select id="octave-select">
+            <option value="-12">Lower</option>
+            <option value="0" selected>Middle</option>
+            <option value="12">Upper</option>
+          </select>
+        </div>
+        <div class="field">
           <span class="lbl">Raga</span>
           <select id="raga-select">
             <option value="mayamalavagowla">Mayamalavagowla</option>
@@ -695,6 +703,7 @@
 
     const toggleBtn  = document.getElementById('toggle-btn');
     const ragaSelect = document.getElementById('raga-select');
+    const octaveSelect = document.getElementById('octave-select');
     const saSelect   = document.getElementById('sa-select');
     const canvas     = document.getElementById('pitch-canvas');
 
@@ -702,7 +711,7 @@
       var THRESHOLD = 0.15;
       var halfSize  = Math.floor(buffer.length / 2);
       var minTau    = Math.floor(sampleRate / 1000);
-      var maxTau    = Math.min(Math.floor(sampleRate / 80), halfSize);
+      var maxTau    = Math.min(Math.floor(sampleRate / 50), halfSize);
 
       var diff = new Float32Array(halfSize);
       for (var tau = 0; tau < halfSize; tau++) {
@@ -1052,8 +1061,9 @@
       ctx.fillRect(0, 0, width, height);
 
       var range     = getRagaRange(raga);
-      var minSemi   = range.minSemi;
-      var maxSemi   = range.maxSemi;
+      var octShift  = Number(octaveSelect.value);
+      var minSemi   = range.minSemi + octShift;
+      var maxSemi   = range.maxSemi + octShift;
       var semiRange = maxSemi - minSemi;
 
       var elapsed = state.playbackMode
@@ -1077,13 +1087,21 @@
         ctx.stroke();
 
         var octave = Math.floor(semi / 12);
-        var label  = SWARA_NAMES[pos] +
-          (octave > 0 ? "'".repeat(octave) : octave < 0 ? '.'.repeat(-octave) : '');
+        var label  = SWARA_NAMES[pos];
         ctx.fillStyle    = '#999';
         ctx.font         = '10px monospace';
-        ctx.textAlign    = 'right';
+        ctx.textAlign    = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(label, pL - 6, y);
+        var lx = pL - 6 - ctx.measureText(label).width;
+        ctx.fillText(label, lx, y);
+        // Carnatic octave dots: above the first letter for upper octaves, below for lower
+        var dotX = lx + ctx.measureText(label[0]).width / 2;
+        for (var o = 1; o <= Math.abs(octave); o++) {
+          var dy = octave > 0 ? y - 5 - (o - 1) * 3 : y + 7 + (o - 1) * 3;
+          ctx.beginPath();
+          ctx.arc(dotX, dy, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       var timeStep  = windowDuration <= 5 ? 1 : 2;
@@ -1249,7 +1267,7 @@
           g.className = 'mini-gap';
           miniKeysEl.appendChild(g);
         }
-        var hz = saFreq * Math.pow(2, semi / 12);
+        var hz = saFreq * Math.pow(2, (semi + Number(octaveSelect.value)) / 12);
         var key = PAD_KEY_MAP[i];
         var id = 'pad' + i;
         var el = document.createElement('div');
@@ -1412,6 +1430,7 @@
       if (state.isLive) state.saFreq = SA_FREQUENCIES[saSelect.value];
       buildPads();
     });
+    octaveSelect.addEventListener('change', buildPads);
     buildPads();
 
     // --- Panel toggle ---
